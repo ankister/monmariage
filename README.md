@@ -7,6 +7,7 @@ Site du mariage de Pauline & Antoine, pour **paulineetantoine.fr**.
 - **Où dormir** : une carte avec le lieu et tous les gîtes. Cliquer sur une fiche centre la carte sur le gîte. Si tu ne précises pas la distance, elle est calculée automatiquement.
 - **Le formulaire de réponse** : présent ou absent, adultes, enfants, régime, gîte choisi, brunch, message. Une nouvelle réponse au même nom remplace l'ancienne.
 - **L'espace `/admin`** : totaux, occupation de chaque gîte, liste des régimes pour le traiteur, export CSV pour Excel, suppression d'une réponse
+- **`/admin/gites`** : ajouter un gîte avec simplement son nom et son adresse. Il est placé automatiquement sur la carte du site. Le marqueur peut être ajusté à la main, et la page permet aussi de modifier, réordonner ou supprimer un gîte.
 - **Options** : un code d'accès pour les invités, et une notification Discord ou ntfy à chaque réponse
 
 Le tout tient dans une seule image Docker : Node 24, Express et SQLite (module natif, rien à compiler).
@@ -16,7 +17,8 @@ Le tout tient dans une seule image Docker : Node 24, Express et SQLite (module n
 | Quoi | Où | Dans le dépôt ? |
 |---|---|---|
 | Code du site | ce dépôt | oui |
-| Textes, lieu, menu, gîtes | `/config/contenu.json` sur Bretzel | **non** |
+| Textes, lieu, menu, programme | `/config/contenu.json` sur Bretzel | **non** |
+| Gîtes (saisis dans `/admin/gites`) | `/data/reponses.sqlite` sur Bretzel | **non** |
 | Photos | `/config/images/` sur Bretzel, servies en `/images/...` | **non** |
 | Réponses des invités | `/data/reponses.sqlite` sur Bretzel | **non** |
 
@@ -70,13 +72,25 @@ Pour vérifier : le site répond sur `http://192.168.1.55:3030` et l'admin sur `
 ## Personnaliser `contenu.json`
 
 - **Coordonnées GPS** : clic droit dans OpenStreetMap ou Google Maps pour les copier. Le format est décimal avec un point (`43.6045`).
-- **Gîtes** : `nom`, `commune`, `capacite`, `prix`, `telephone`, `lien`, `latitude`, `longitude`, `photo`, `note`. Tous les champs sont facultatifs sauf `nom`. Ajoute `distance` pour remplacer le calcul automatique à vol d'oiseau.
+- **Gîtes** : ils ne se gèrent plus dans ce fichier, mais dans **`/admin/gites`** (voir plus bas). Seul le texte d'introduction `gites_intro` reste ici.
 - **Photos** : dépose-les dans `config/images/` et indique `"/images/nom-du-fichier.jpg"`.
 - **Réponses** :
   - `rsvp.date_limite` (`AAAA-MM-JJ`) : après cette date, le formulaire se ferme.
   - `rsvp.demander_brunch` : à `false`, la question du brunch disparaît.
 - Une section que tu supprimes (`programme`, `infos`…) disparaît du site et du menu.
 - En cas de JSON invalide (virgule en trop, guillemet oublié), le site affiche une erreur. Pour vérifier le fichier : `python3 -m json.tool contenu.json`.
+
+## Gérer les gîtes (`/admin/gites`)
+
+1. Saisis le **nom** et l'**adresse**, puis clique sur **Enregistrer**. Le gîte apparaît aussitôt sur la carte du site.
+2. Pour vérifier la position avant d'enregistrer, clique sur **📍 Localiser**. La meilleure correspondance est placée (marqueur rouge) et les autres propositions s'affichent en liste.
+3. Si l'adresse est imprécise (lieu-dit, chemin sans numéro), **déplace le marqueur rouge** ou **clique sur la carte** pour le placer.
+4. Le bloc *Plus d'informations* sert à ajouter la capacité, le prix, le téléphone, le lien de réservation, une photo et une remarque.
+5. Les boutons ▲ ▼ changent l'ordre d'affichage, qui donne aussi les numéros sur la carte. ✏️ modifie, 🗑 supprime.
+
+Le géocodage interroge d'abord la **Géoplateforme de l'IGN** (Base Adresse Nationale), qui est précise pour les adresses françaises. Si elle ne trouve rien, il essaie **Nominatim (OpenStreetMap)**, qui connaît aussi les lieux-dits et les noms d'établissements. Aucune clé n'est nécessaire.
+
+Les gîtes saisis dans le `contenu.json` d'une ancienne version sont importés automatiquement, une seule fois, au premier démarrage.
 
 ## Options (`.env`)
 
@@ -87,6 +101,7 @@ Pour vérifier : le site répond sur `http://192.168.1.55:3030` et l'admin sur `
 | `SITE_CODE` | si renseigné, les invités doivent saisir ce code (sans tenir compte des majuscules) avant de voir le site. Pratique pour garder l'adresse privée. |
 | `DISCORD_WEBHOOK_URL` | notification Discord à chaque réponse |
 | `NTFY_URL` | notification ntfy, par ex. `https://ntfy.sh/un-sujet-secret` |
+| `GEOCODER_USER_AGENT` | identifiant envoyé à Nominatim. Sa politique d'usage demande un contact, par ex. `monmariage/1.0 (contact@paulineetantoine.fr)` |
 
 ## Mettre à jour le site
 

@@ -4,12 +4,11 @@
   "date_texte": "Samedi 12 juin 2027",
   "accroche": "Nous avons la joie de vous convier à notre mariage",
   "photo_couverture": "",
-
   "lieu": {
     "nom": "Domaine de l'Exemple",
     "adresse": "1 chemin des Vignes, 31000 Toulouse",
     "latitude": 43.6045,
-    "longitude": 1.4440,
+    "longitude": 1.444,
     "description": "Le domaine dispose d'un grand parking gratuit. Fléchage depuis le village.",
     "acces": [
       "En voiture : 25 min depuis Toulouse",
@@ -17,75 +16,84 @@
     ],
     "photo": ""
   },
-
   "programme": [
-    { "heure": "15h00", "titre": "Cérémonie laïque", "detail": "Dans le jardin du domaine" },
-    { "heure": "16h30", "titre": "Vin d'honneur", "detail": "Sur la terrasse" },
-    { "heure": "20h00", "titre": "Dîner", "detail": "Salle de réception" },
-    { "heure": "23h00", "titre": "Soirée dansante", "detail": "Jusqu'au bout de la nuit" },
-    { "heure": "Dim. 11h", "titre": "Brunch", "detail": "Pour ceux qui restent dormir" }
-  ],
-
-  "menu": [
-    { "categorie": "Vin d'honneur", "plats": ["Pièces cocktail salées", "Atelier foie gras"] },
-    { "categorie": "Entrée", "plats": ["Velouté de petits pois, crème à la menthe"] },
-    { "categorie": "Plat", "plats": ["Magret de canard, sauce au miel", "Option végétarienne : risotto aux cèpes"] },
-    { "categorie": "Fromages", "plats": ["Plateau de fromages des Pyrénées"] },
-    { "categorie": "Dessert", "plats": ["Pièce montée", "Buffet de desserts"] }
-  ],
-  "menu_note": "Une allergie ou un régime particulier ? Indiquez-le dans votre réponse.",
-
-  "gites_intro": "Nous avons repéré quelques hébergements autour du domaine. Réservez directement auprès d'eux, et indiquez-nous dans votre réponse où vous dormirez.",
-  "gites": [
     {
-      "nom": "Gîte des Tilleuls",
-      "commune": "Village A",
-      "capacite": "8 personnes",
-      "prix": "≈ 250 € / nuit",
-      "telephone": "05 00 00 00 00",
-      "lien": "https://example.com",
-      "latitude": 43.6160,
-      "longitude": 1.4620,
-      "photo": "",
-      "note": "Option posée à notre nom jusqu'au 1er mars : dites « mariage P & A »."
+      "heure": "15h00",
+      "titre": "Cérémonie laïque",
+      "detail": "Dans le jardin du domaine"
     },
     {
-      "nom": "Chambres d'hôtes Le Moulin",
-      "commune": "Village B",
-      "capacite": "4 chambres doubles",
-      "prix": "≈ 90 € / chambre",
-      "telephone": "05 00 00 00 01",
-      "lien": "",
-      "latitude": 43.5890,
-      "longitude": 1.4210,
-      "photo": "",
-      "note": ""
+      "heure": "16h30",
+      "titre": "Vin d'honneur",
+      "detail": "Sur la terrasse"
     },
     {
-      "nom": "Gîte La Grange",
-      "commune": "Village C",
-      "distance": "10 min en voiture",
-      "capacite": "12 personnes",
-      "prix": "≈ 400 € / nuit",
-      "telephone": "",
-      "lien": "https://example.com",
-      "latitude": 43.6250,
-      "longitude": 1.4050,
-      "photo": "",
-      "note": "Idéal pour un groupe d'amis."
+      "heure": "20h00",
+      "titre": "Dîner",
+      "detail": "Salle de réception"
+    },
+    {
+      "heure": "23h00",
+      "titre": "Soirée dansante",
+      "detail": "Jusqu'au bout de la nuit"
+    },
+    {
+      "heure": "Dim. 11h",
+      "titre": "Brunch",
+      "detail": "Pour ceux qui restent dormir"
     }
   ],
-
+  "menu": [
+    {
+      "categorie": "Vin d'honneur",
+      "plats": [
+        "Pièces cocktail salées",
+        "Atelier foie gras"
+      ]
+    },
+    {
+      "categorie": "Entrée",
+      "plats": [
+        "Velouté de petits pois, crème à la menthe"
+      ]
+    },
+    {
+      "categorie": "Plat",
+      "plats": [
+        "Magret de canard, sauce au miel",
+        "Option végétarienne : risotto aux cèpes"
+      ]
+    },
+    {
+      "categorie": "Fromages",
+      "plats": [
+        "Plateau de fromages des Pyrénées"
+      ]
+    },
+    {
+      "categorie": "Dessert",
+      "plats": [
+        "Pièce montée",
+        "Buffet de desserts"
+      ]
+    }
+  ],
+  "menu_note": "Une allergie ou un régime particulier ? Indiquez-le dans votre réponse.",
+  "gites_intro": "Nous avons repéré quelques hébergements autour du domaine. Réservez directement auprès d'eux, et indiquez-nous dans votre réponse où vous dormirez.",
   "rsvp": {
     "date_limite": "2027-04-30",
     "demander_brunch": true,
     "libelle_brunch": "Serez-vous au brunch le dimanche ?"
   },
-
   "infos": [
-    { "question": "Les enfants sont-ils invités ?", "reponse": "Oui, avec un espace dédié et une baby-sitter." },
-    { "question": "Y a-t-il un code vestimentaire ?", "reponse": "Tenue chic mais confortable, la cérémonie a lieu sur l'herbe." }
+    {
+      "question": "Les enfants sont-ils invités ?",
+      "reponse": "Oui, avec un espace dédié et une baby-sitter."
+    },
+    {
+      "question": "Y a-t-il un code vestimentaire ?",
+      "reponse": "Tenue chic mais confortable, la cérémonie a lieu sur l'herbe."
+    }
   ],
-
   "contact": "Une question ? 06 00 00 00 00 · contact@paulineetantoine.fr"
 }

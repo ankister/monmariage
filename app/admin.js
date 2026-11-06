@@ -1,10 +1,50 @@
 // Rendu de l'espace admin et export CSV
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const dateFr = iso => {
   const d = new Date(iso.replace(" ", "T") + "Z");
   return d.toLocaleString("fr-FR", { timeZone: "Europe/Paris", dateStyle: "short", timeStyle: "short" });
 };
+
+// Gabarit commun aux pages d'admin : styles + navigation
+export function gabarit(titre, actif, corps, tete = "") {
+  const lien = (href, cle, texte) => `<a href="${href}"${cle === actif ? ' class="actif"' : ""}>${texte}</a>`;
+  return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>${esc(titre)}</title><link rel="icon" href="/favicon.svg">${tete}
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 0; background: #f6f4ef; color: #333; }
+  .entete-admin { background: #fff; border-bottom: 1px solid #e3ddd0; }
+  .entete-admin nav { max-width: 1300px; margin: 0 auto; padding: .7rem 1.5rem; display: flex; gap: 1.4rem; align-items: center; }
+  .entete-admin nav a { color: #555; text-decoration: none; padding: .3rem 0; border-bottom: 2px solid transparent; }
+  .entete-admin nav a.actif { color: #5f6f52; border-color: #5f6f52; font-weight: 600; }
+  .entete-admin nav .site { margin-left: auto; font-size: .9rem; }
+  main { max-width: 1300px; margin: 0 auto; padding: 1.5rem; }
+  h1 { font-weight: 600; margin: 0 0 1rem; } h2 { margin: 2rem 0 .6rem; font-size: 1.15rem; }
+  .tuiles { display: flex; gap: .8rem; flex-wrap: wrap; }
+  .tuile { background: #fff; border: 1px solid #e3ddd0; border-radius: 8px; padding: .8rem 1.2rem; min-width: 130px; }
+  .tuile b { display: block; font-size: 1.8rem; color: #5f6f52; } .tuile span { color: #777; font-size: .85rem; }
+  .barre { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+  .btn { background: #5f6f52; color: #fff; padding: .5rem 1rem; border-radius: 6px; text-decoration: none; border: 0;
+         font: inherit; cursor: pointer; display: inline-block; }
+  .btn:hover { background: #4d5b42; } .btn:disabled { opacity: .6; cursor: wait; }
+  .btn.secondaire { background: #fff; color: #5f6f52; border: 1px solid #b9c3ad; } .btn.secondaire:hover { background: #f2f4ee; }
+  .btn.danger { background: #fff; color: #9b2c2c; border: 1px solid #e5b4b4; }
+  .defile { overflow-x: auto; background: #fff; border: 1px solid #e3ddd0; border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; } th, td { padding: .5rem .7rem; text-align: left; vertical-align: top; border-bottom: 1px solid #eee; }
+  th { background: #faf8f3; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: #666; white-space: nowrap; }
+  tr.non td { color: #999; } small { color: #888; }
+  td button, .icone { background: none; border: 0; cursor: pointer; font-size: 1rem; opacity: .55; padding: .1rem .25rem; }
+  td button:hover, .icone:hover { opacity: 1; }
+  ul { margin: .3rem 0; padding-left: 1.2rem; }
+</style></head><body>
+<header class="entete-admin"><nav>
+  ${lien("/admin", "reponses", "Réponses")}
+  ${lien("/admin/gites", "gites", "Gîtes")}
+  <a class="site" href="/" target="_blank">Voir le site ↗</a>
+</nav></header>
+<main>${corps}</main></body></html>`;
+}
 
 export function statistiques(reponses) {
   const presents = reponses.filter(r => r.present);
@@ -59,25 +99,7 @@ export function pageAdmin(reponses, contenu) {
 
   const avecBrunch = reponses.some(x => x.brunch !== null);
 
-  return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
-<title>${esc(titre)}</title><link rel="icon" href="/favicon.svg">
-<style>
-  body { font: 15px/1.5 system-ui, sans-serif; margin: 0; background: #f6f4ef; color: #333; }
-  main { max-width: 1300px; margin: 0 auto; padding: 1.5rem; }
-  h1 { font-weight: 600; margin: 0 0 1rem; } h2 { margin: 2rem 0 .6rem; font-size: 1.15rem; }
-  .tuiles { display: flex; gap: .8rem; flex-wrap: wrap; }
-  .tuile { background: #fff; border: 1px solid #e3ddd0; border-radius: 8px; padding: .8rem 1.2rem; min-width: 130px; }
-  .tuile b { display: block; font-size: 1.8rem; color: #5f6f52; } .tuile span { color: #777; font-size: .85rem; }
-  .barre { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-  .btn { background: #5f6f52; color: #fff; padding: .5rem 1rem; border-radius: 6px; text-decoration: none; }
-  .defile { overflow-x: auto; background: #fff; border: 1px solid #e3ddd0; border-radius: 8px; }
-  table { border-collapse: collapse; width: 100%; } th, td { padding: .5rem .7rem; text-align: left; vertical-align: top; border-bottom: 1px solid #eee; }
-  th { background: #faf8f3; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: #666; white-space: nowrap; }
-  tr.non td { color: #999; } small { color: #888; }
-  button { background: none; border: 0; cursor: pointer; font-size: 1rem; opacity: .5; } button:hover { opacity: 1; }
-  ul { margin: .3rem 0; padding-left: 1.2rem; }
-</style></head><body><main>
+  return gabarit(titre, "reponses", `
 <div class="barre"><h1>${esc(titre)}</h1><a class="btn" href="/admin/export.csv">⬇ Export CSV (Excel)</a></div>
 <div class="tuiles">
   ${tuile(st.adultes + st.enfants, "personnes présentes")}
@@ -99,8 +121,7 @@ ${st.regimes.length ? `<h2>Régimes et allergies (pour le traiteur)</h2><ul>
 <tr><th>Date</th><th>Nom</th><th>Présent</th><th>Adultes</th><th>Enfants</th><th>Régime</th><th>Gîte</th>
 ${avecBrunch ? "<th>Brunch</th>" : ""}<th>Contact</th><th>Message</th><th></th></tr>
 ${lignes || `<tr><td colspan="11">Aucune réponse pour l'instant.</td></tr>`}
-</table></div>
-</main></body></html>`;
+</table></div>`);
 }
 
 // CSV au format Excel français : séparateur « ; » et BOM UTF-8 pour les accents

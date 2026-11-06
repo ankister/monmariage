@@ -24,7 +24,27 @@ export function ouvrirBase(dossier) {
       message     TEXT,
       ip          TEXT
     );
+    CREATE TABLE IF NOT EXISTS gites (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      ordre     INTEGER NOT NULL DEFAULT 0,
+      nom       TEXT    NOT NULL,
+      adresse   TEXT,
+      commune   TEXT,
+      latitude  REAL,
+      longitude REAL,
+      capacite  TEXT,
+      prix      TEXT,
+      telephone TEXT,
+      lien      TEXT,
+      photo     TEXT,
+      note      TEXT,
+      distance  TEXT
+    );
+    CREATE TABLE IF NOT EXISTS meta (cle TEXT PRIMARY KEY, valeur TEXT);
   `);
+
+  const CHAMPS_GITE = ["nom", "adresse", "commune", "latitude", "longitude", "capacite",
+    "prix", "telephone", "lien", "photo", "note", "distance"];
 
   const inserer = db.prepare(`
     INSERT INTO reponses (nom, email, telephone, present, adultes, enfants, noms_accompagnants, regime, gite, brunch, message, ip)
@@ -54,5 +74,34 @@ export function ouvrirBase(dossier) {
     compterRecentesIp: ip => db.prepare(
       "SELECT COUNT(*) AS n FROM reponses WHERE ip = ? AND cree_le > datetime('now', '-1 hour')"
     ).get(ip).n,
+
+    // ----- Gîtes -----
+    gites: () => db.prepare("SELECT * FROM gites ORDER BY ordre, id").all(),
+    gite: id => db.prepare("SELECT * FROM gites WHERE id = ?").get(id),
+    creerGite: g => {
+      const ordre = db.prepare("SELECT COALESCE(MAX(ordre), 0) + 1 AS o FROM gites").get().o;
+      return db.prepare(`INSERT INTO gites (ordre, ${CHAMPS_GITE.join(", ")})
+        VALUES (?, ${CHAMPS_GITE.map(() => "?").join(", ")})`)
+        .run(ordre, ...CHAMPS_GITE.map(c => g[c] ?? null)).lastInsertRowid;
+    },
+    modifierGite: (id, g) => db.prepare(`UPDATE gites SET ${CHAMPS_GITE.map(c => `${c} = ?`).join(", ")} WHERE id = ?`)
+      .run(...CHAMPS_GITE.map(c => g[c] ?? null), id).changes,
+    supprimerGite: id => db.prepare("DELETE FROM gites WHERE id = ?").run(id).changes,
+    deplacerGite: (id, sens) => {
+      const liste = db.prepare("SELECT id FROM gites ORDER BY ordre, id").all().map(r => r.id);
+      const i = liste.indexOf(id), j = i + sens;
+      if (i < 0 || j < 0 || j >= liste.length) return;
+      [liste[i], liste[j]] = [liste[j], liste[i]];
+      const maj = db.prepare("UPDATE gites SET ordre = ? WHERE id = ?");
+      db.exec("BEGIN");
+      liste.forEach((gid, k) => maj.run(k + 1, gid));
+      db.exec("COMMIT");
+    },
+
+    // ----- Réglages divers -----
+    lireMeta: cle => db.prepare("SELECT valeur FROM meta WHERE cle = ?").get(cle)?.valeur,
+    ecrireMeta: (cle, valeur) => db.prepare(
+      "INSERT INTO meta (cle, valeur) VALUES (?, ?) ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur"
+    ).run(cle, String(valeur)),
   };
 }

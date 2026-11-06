@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { ouvrirBase } from "./db.js";
 import { pageAdmin, csvReponses } from "./admin.js";
+import { pageGites } from "./admin-gites.js";
+import { geocoder } from "./geocodage.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const RACINE = join(ICI, "..");
@@ -37,9 +39,22 @@ try {
 }
 
 const db = ouvrirBase(DATA_DIR);
+
+// Une seule fois : reprend les gîtes éventuellement saisis dans contenu.json (ancienne version)
+if (!db.lireMeta("gites_importes")) {
+  try {
+    const anciens = JSON.parse(readFileSync(join(CONFIG_DIR, "contenu.json"), "utf8")).gites || [];
+    if (!db.gites().length) anciens.filter(g => g?.nom).forEach(g => db.creerGite(normaliserGite(g)));
+    if (anciens.length) console.log(`🏡 ${anciens.length} gîte(s) importé(s) depuis contenu.json — gère-les maintenant dans /admin/gites`);
+  } catch { /* pas de contenu.json lisible : rien à importer */ }
+  db.ecrireMeta("gites_importes", new Date().toISOString());
+}
+
 const app = express();
 app.set("trust proxy", true);
 app.disable("x-powered-by");
+app.use(express.urlencoded({ extended: false, limit: "20kb" }));
+app.use(express.json({ limit: "20kb" }));
 
 // ---------- Utilitaires ----------
 function lireContenu() {
@@ -64,7 +79,33 @@ function lireCookies(req) {
 
 const jetonAcces = () => createHmac("sha256", SECRET).update("acces:" + SITE_CODE).digest("hex");
 
-const nettoyer = (v, max = 300) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+function nettoyer(v, max = 300) { return typeof v === "string" ? v.trim().slice(0, max) : ""; }
+
+function coordonnee(v, min, max) {
+  if (v === "" || v === null || v === undefined) return null;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) && n >= min && n <= max ? Math.round(n * 1e6) / 1e6 : null;
+}
+
+// Nettoie une fiche gîte venant du formulaire admin (ou d'un ancien contenu.json)
+function normaliserGite(g = {}) {
+  const lien = nettoyer(g.lien, 500);
+  const latitude = coordonnee(g.latitude, -90, 90), longitude = coordonnee(g.longitude, -180, 180);
+  return {
+    nom: nettoyer(g.nom, 120),
+    adresse: nettoyer(g.adresse, 250),
+    commune: nettoyer(g.commune, 120),
+    latitude: latitude !== null && longitude !== null ? latitude : null,
+    longitude: latitude !== null && longitude !== null ? longitude : null,
+    capacite: nettoyer(g.capacite, 80),
+    prix: nettoyer(g.prix, 80),
+    telephone: nettoyer(g.telephone, 40),
+    lien: /^https?:\/\//i.test(lien) ? lien : "",
+    photo: nettoyer(g.photo, 300),
+    note: nettoyer(g.note, 600),
+    distance: nettoyer(g.distance, 80),
+  };
+}
 const entier = (v, min, max) => {
   const n = Number.parseInt(v, 10);
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
@@ -103,9 +144,69 @@ app.post("/admin/supprimer/:id", exigerAdmin, (req, res) => {
   res.redirect(303, "/admin");
 });
 
+// ----- Gestion des gîtes -----
+app.get("/admin/gites", exigerAdmin, (_req, res) => {
+  let contenu = {};
+  try { contenu = lireContenu(); } catch { /* idem */ }
+  res.set("Cache-Control", "no-store").type("html").send(pageGites(contenu));
+});
+
+app.get("/admin/api/gites", exigerAdmin, (_req, res) => res.set("Cache-Control", "no-store").json(db.gites()));
+
+app.post("/admin/api/geocoder", exigerAdmin, async (req, res) => {
+  try {
+    res.json(await geocoder(nettoyer(req.body?.adresse, 250)));
+  } catch (e) {
+    res.status(502).json({ erreur: e.message });
+  }
+});
+
+// Si aucune position n'est fournie, l'adresse est géocodée automatiquement
+async function completerPosition(g) {
+  if (g.latitude !== null || !g.adresse) return null;
+  try {
+    const [premier] = await geocoder(g.adresse);
+    if (!premier) return "Adresse introuvable : le gîte est enregistré mais pas placé sur la carte. Modifiez-le et placez-le sur la carte.";
+    g.latitude = premier.latitude;
+    g.longitude = premier.longitude;
+    g.commune ||= premier.commune;
+    return null;
+  } catch (e) {
+    return `Géocodage impossible (${e.message}) : placez le gîte à la main sur la carte.`;
+  }
+}
+
+app.post("/admin/api/gites", exigerAdmin, async (req, res) => {
+  const g = normaliserGite(req.body);
+  if (!g.nom) return res.status(400).json({ erreur: "Le nom du gîte est obligatoire." });
+  const avertissement = await completerPosition(g);
+  const id = db.creerGite(g);
+  res.status(201).json({ gite: db.gite(id), avertissement });
+});
+
+app.put("/admin/api/gites/:id", exigerAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!db.gite(id)) return res.status(404).json({ erreur: "Gîte introuvable." });
+  const g = normaliserGite(req.body);
+  if (!g.nom) return res.status(400).json({ erreur: "Le nom du gîte est obligatoire." });
+  const avertissement = await completerPosition(g);
+  db.modifierGite(id, g);
+  res.json({ gite: db.gite(id), avertissement });
+});
+
+app.delete("/admin/api/gites/:id", exigerAdmin, (req, res) => {
+  res.json({ ok: db.supprimerGite(Number(req.params.id)) > 0 });
+});
+
+app.post("/admin/api/gites/:id/deplacer", exigerAdmin, (req, res) => {
+  db.deplacerGite(Number(req.params.id), req.body?.sens === "haut" ? -1 : 1);
+  res.json(db.gites());
+});
+
+// Bibliothèque de carte : publique, servie avant le contrôle du code d'accès (utilisée aussi par l'admin)
+app.use("/vendor/leaflet", express.static(join(RACINE, "node_modules/leaflet/dist"), { maxAge: "30d" }));
+
 // ---------- Code d'accès invités (facultatif) ----------
-app.use(express.urlencoded({ extended: false, limit: "20kb" }));
-app.use(express.json({ limit: "20kb" }));
 
 app.post("/acces", (req, res) => {
   if (SITE_CODE && egaliteSure(nettoyer(req.body.code, 100).toLowerCase(), SITE_CODE.toLowerCase())) {
@@ -129,7 +230,8 @@ app.use((req, res, next) => {
 // ---------- API publique ----------
 app.get("/api/contenu", (_req, res) => {
   try {
-    res.set("Cache-Control", "no-store").json(lireContenu());
+    const gites = db.gites().map(({ id, ordre, ...g }) => g);
+    res.set("Cache-Control", "no-store").json({ ...lireContenu(), gites });
   } catch (e) {
     console.error(e);
     res.status(500).json({ erreur: "contenu.json illisible : vérifie la syntaxe JSON." });
@@ -160,7 +262,7 @@ app.post("/api/rsvp", async (req, res) => {
   }
   const present = b.present === "oui" ? 1 : 0;
 
-  const gitesConnus = (contenu.gites || []).map(g => g.nom);
+  const gitesConnus = db.gites().map(g => g.nom);
   const gite = nettoyer(b.gite, 120);
   const giteValide = present && (gitesConnus.includes(gite) || ["autre", "aucun"].includes(gite)) ? gite : "";
 
@@ -207,7 +309,6 @@ async function notifier(r, modification) {
 }
 
 // ---------- Fichiers statiques ----------
-app.use("/vendor/leaflet", express.static(join(RACINE, "node_modules/leaflet/dist"), { maxAge: "30d" }));
 app.use("/images", express.static(join(CONFIG_DIR, "images"), { maxAge: "1d" }));
 app.use(express.static(join(RACINE, "site"), { maxAge: "1h" }));
 

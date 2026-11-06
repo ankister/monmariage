@@ -75,7 +75,7 @@ function sectionGites(c) {
         ${g.photo ? `<img src="${esc(g.photo)}" alt="" loading="lazy">` : ""}
         <h3>${esc(g.nom)}</h3>
         <dl>
-          ${g.commune ? `<dt>Commune</dt><dd>${esc(g.commune)}</dd>` : ""}
+          ${g.adresse ? `<dt>Adresse</dt><dd>${esc(g.adresse)}</dd>` : g.commune ? `<dt>Commune</dt><dd>${esc(g.commune)}</dd>` : ""}
           ${dist ? `<dt>Distance</dt><dd>${esc(dist)}</dd>` : ""}
           ${g.capacite ? `<dt>Capacité</dt><dd>${esc(g.capacite)}</dd>` : ""}
           ${g.prix ? `<dt>Prix</dt><dd>${esc(g.prix)}</dd>` : ""}

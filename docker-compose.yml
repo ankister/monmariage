@@ -18,6 +18,7 @@ services:
       SITE_CODE: ${SITE_CODE:-}                      # facultatif : code d'accès imprimé sur le faire-part
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}  # facultatif : notification à chaque réponse
       NTFY_URL: ${NTFY_URL:-}                        # facultatif : notification ntfy
+      GEOCODER_USER_AGENT: ${GEOCODER_USER_AGENT:-monmariage/1.0 (contact@paulineetantoine.fr)}
     volumes:
       - /mnt/user/appdata/monmariage/config:/config   # contenu.json + images/
       - /mnt/user/appdata/monmariage/data:/data       # reponses.sqlite
