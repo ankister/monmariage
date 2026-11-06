@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Notre mariage</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="page-acces">
+<form class="carte acces" method="post" action="/acces">
+  <h1>Notre mariage</h1>
+  <p>Saisissez le code indiqué sur votre faire-part.</p>
+  <input name="code" autocomplete="off" autocapitalize="off" required autofocus placeholder="Code d'accès">
+  <p class="erreur-acces" hidden>Code incorrect, réessayez.</p>
+  <button class="btn" type="submit">Entrer</button>
+</form>
+<script>
+  if (new URLSearchParams(location.search).has("erreur")) document.querySelector(".erreur-acces").hidden = false;
+</script>
+</body>
+</html>

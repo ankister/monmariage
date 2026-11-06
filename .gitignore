@@ -1,0 +1,7 @@
+node_modules/
+# Données personnelles : jamais dans le dépôt
+data/
+config/
+.env
+*.sqlite
+*.sqlite-*

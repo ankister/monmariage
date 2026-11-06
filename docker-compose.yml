@@ -1,0 +1,23 @@
+# Site du mariage — Bretzel (Unraid)
+# Image privée : faire une fois `docker login ghcr.io -u ankister` avec un token (scope read:packages)
+
+name: monmariage
+
+services:
+  site:
+    image: ghcr.io/ankister/monmariage:latest
+    container_name: monmariage
+    restart: unless-stopped
+    user: "99:100"                  # nobody:users, propriétaire habituel de appdata sur Unraid
+    ports:
+      - "3030:8080"                 # http://192.168.1.55:3030 — publié via NPM ou Cloudflare Tunnel
+    environment:
+      TZ: Europe/Paris
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}              # espace /admin (utilisateur : n'importe lequel)
+      SESSION_SECRET: ${SESSION_SECRET}
+      SITE_CODE: ${SITE_CODE:-}                      # facultatif : code d'accès imprimé sur le faire-part
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}  # facultatif : notification à chaque réponse
+      NTFY_URL: ${NTFY_URL:-}                        # facultatif : notification ntfy
+    volumes:
+      - /mnt/user/appdata/monmariage/config:/config   # contenu.json + images/
+      - /mnt/user/appdata/monmariage/data:/data       # reponses.sqlite
