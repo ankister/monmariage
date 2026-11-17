@@ -1,0 +1,80 @@
+/**
+ * Données d'exemple insérées au premier démarrage.
+ * Tout est modifiable ensuite depuis l'interface d'administration (/admin).
+ */
+'use strict';
+
+function defaultContent() {
+  return {
+    couple: 'Pauline & Antoine',
+    // Date et heure locales (fuseau ci-dessous) du début de la cérémonie
+    date: '2027-06-19T14:30',
+    timezone: 'Europe/Paris',
+    duration_hours: 12, // utilisé pour le fichier agenda .ics
+    rsvp_deadline: '2027-04-30',
+    welcome:
+      "Nous avons la joie de vous annoncer notre mariage ! Vous trouverez sur ce site toutes les informations pratiques : programme, lieux, menu et hébergements. Merci de nous confirmer votre présence avant la date limite.",
+    contact_email: 'contact@paulineetantoine.fr',
+    contact_phone: '',
+    nights: ['Vendredi 18 juin', 'Samedi 19 juin', 'Dimanche 20 juin'],
+    theme: {
+      title: 'Champêtre chic',
+      description:
+        "Une journée simple et lumineuse, entre fleurs des champs, bois naturel et lumières douces. Nous rêvons d'une ambiance de fête de village, élégante mais sans chichis.",
+      dress_code:
+        'Tenue de cocktail, couleurs claires ou pastel bienvenues. Prévoyez des chaussures confortables : la soirée se passe en partie sur l’herbe !',
+      colors: ['#6f7f5e', '#c9a46c', '#efe6d8', '#b5654a'],
+    },
+    menu_intro: 'Le repas est préparé par un traiteur local avec des produits de saison.',
+    menu: [
+      { title: "Vin d'honneur", items: ['Pièces cocktail salées', 'Bar à fromages de la région', 'Citronnade maison'] },
+      { title: 'Entrée', items: ['Velouté de petits pois, menthe fraîche', 'Option végétarienne : idem'] },
+      { title: 'Plat', items: ['Suprême de volaille, jus corsé', 'Option végétarienne : risotto aux asperges'] },
+      { title: 'Dessert', items: ['Pièce montée', 'Buffet de douceurs'] },
+    ],
+    menu_note: 'Allergies ou régime particulier ? Indiquez-le dans le formulaire de réponse.',
+    options: {
+      rsvp_open: true,
+      bookings_open: true,
+    },
+  };
+}
+
+function defaultPlaces() {
+  return [
+    {
+      kind: 'mairie', name: 'Mairie (exemple)', address: '1 place de la Mairie, 31770 Colomiers',
+      lat: 43.6112, lng: 1.3349, time: '14h30', description: 'Cérémonie civile.',
+    },
+    {
+      kind: 'eglise', name: 'Église (exemple)', address: 'Place de l’Église, 31770 Colomiers',
+      lat: 43.6125, lng: 1.3378, time: '15h30', description: 'Cérémonie religieuse.',
+    },
+    {
+      kind: 'salle', name: 'Salle de réception (exemple)', address: 'Chemin du Domaine, 31770 Colomiers',
+      lat: 43.6031, lng: 1.3205, time: '18h00', description: "Vin d'honneur, dîner et soirée dansante.",
+    },
+  ];
+}
+
+function defaultGites() {
+  return [
+    {
+      name: 'Gîte des Tilleuls (exemple)', address: '12 route des Tilleuls, 31770 Colomiers',
+      lat: 43.6010, lng: 1.3150, capacity: 10, price: '35 € / pers. / nuit', contact: '06 00 00 00 00',
+      url: '', description: 'À 5 minutes à pied de la salle. Draps fournis.', bookable: 1,
+    },
+    {
+      name: 'La Grange (exemple)', address: '3 chemin de la Grange, 31770 Colomiers',
+      lat: 43.6065, lng: 1.3260, capacity: 6, price: '40 € / pers. / nuit', contact: 'lagrange@example.com',
+      url: '', description: 'Petit-déjeuner inclus.', bookable: 1,
+    },
+    {
+      name: 'Hôtel du Centre (exemple)', address: '8 avenue du Centre, 31770 Colomiers',
+      lat: 43.6140, lng: 1.3400, capacity: 20, price: 'à partir de 75 € / chambre', contact: '05 00 00 00 00',
+      url: 'https://example.com', description: 'Réservation directement auprès de l’hôtel.', bookable: 0,
+    },
+  ];
+}
+
+module.exports = { defaultContent, defaultPlaces, defaultGites };

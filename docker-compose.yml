@@ -1,0 +1,39 @@
+# Site de mariage — docker compose up -d --build
+# Toutes les valeurs se règlent dans le fichier .env (voir .env.example).
+name: monmariage
+
+services:
+  api:
+    build: ./api
+    image: monmariage-api:latest
+    container_name: monmariage-api
+    restart: unless-stopped
+    # Propriétaire des fichiers de la base (Unraid : PUID=99 / PGID=100)
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      INVITE_CODE: ${INVITE_CODE:-}
+      TZ: ${TZ:-Europe/Paris}
+    volumes:
+      - ${DATA_PATH:-./data}:/data
+    networks:
+      - monmariage
+    # Pas de port publié : l'API n'est joignable qu'à travers le conteneur web
+
+  web:
+    build: ./web
+    image: monmariage-web:latest
+    container_name: monmariage-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8095}:80"
+    networks:
+      - monmariage
+
+networks:
+  monmariage:
+    name: monmariage

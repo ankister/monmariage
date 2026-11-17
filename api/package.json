@@ -1,0 +1,17 @@
+{
+  "name": "monmariage-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API du site de mariage (RSVP, réservations de gîtes, administration)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "hash-password": "node scripts/hash-password.js",
+    "reset-password": "node scripts/reset-password.js"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "express": "^5.3.0"
+  }
+}

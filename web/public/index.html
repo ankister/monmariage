@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Site privé : on demande aux moteurs de recherche de ne pas l'indexer -->
+  <meta name="robots" content="noindex, nofollow">
+  <title>Notre mariage</title>
+  <meta name="description" content="Toutes les informations sur notre mariage : programme, lieux, menu, hébergements et confirmation de présence.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/vendor/leaflet/leaflet.js" defer></script>
+  <script src="/js/common.js" defer></script>
+  <script src="/js/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+
+  <header class="hero" id="accueil">
+    <svg class="ornament" viewBox="0 0 120 40" aria-hidden="true">
+      <path d="M2 20 H48 M72 20 H118" stroke="currentColor" stroke-width="1" fill="none"/>
+      <path d="M60 6 C52 14 52 26 60 34 C68 26 68 14 60 6 Z" fill="none" stroke="currentColor" stroke-width="1"/>
+      <path d="M48 20 C52 14 56 14 60 20 C64 14 68 14 72 20" fill="none" stroke="currentColor" stroke-width="1"/>
+    </svg>
+    <p class="eyebrow">Nous nous marions</p>
+    <h1 class="couple" data-bind="couple">&nbsp;</h1>
+    <p class="hero-date" data-bind="dateLong">&nbsp;</p>
+    <p class="hero-place" data-bind="firstPlace"></p>
+
+    <div class="countdown" role="timer" aria-live="off" aria-label="Compte à rebours jusqu'au mariage">
+      <div class="cd-box"><span class="cd-num" id="cd-days">–</span><span class="cd-label">jours</span></div>
+      <div class="cd-box"><span class="cd-num" id="cd-hours">–</span><span class="cd-label">heures</span></div>
+      <div class="cd-box"><span class="cd-num" id="cd-minutes">–</span><span class="cd-label">minutes</span></div>
+      <div class="cd-box"><span class="cd-num" id="cd-seconds">–</span><span class="cd-label">secondes</span></div>
+    </div>
+    <p class="cd-done" id="cd-done" hidden></p>
+
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#rsvp">Confirmer ma présence</a>
+      <a class="btn btn-ghost" href="/api/calendar.ics" download>Ajouter à mon agenda</a>
+    </div>
+  </header>
+
+  <nav class="topnav" aria-label="Sections du site">
+    <ul>
+      <li><a href="#programme">Programme</a></li>
+      <li><a href="#theme">Thème</a></li>
+      <li><a href="#menu">Menu</a></li>
+      <li><a href="#hebergement">Dormir</a></li>
+      <li><a href="#rsvp" class="nav-cta">Répondre</a></li>
+    </ul>
+  </nav>
+
+  <main id="contenu">
+    <section class="intro container narrow">
+      <p class="lead" data-bind="welcome"></p>
+    </section>
+
+    <!-- Programme & lieux -->
+    <section id="programme" class="section">
+      <div class="container">
+        <h2 class="section-title"><span>Le programme</span></h2>
+        <ol class="timeline" id="places-list"></ol>
+        <div class="map" id="map-places" role="region" aria-label="Carte des lieux du mariage"></div>
+      </div>
+    </section>
+
+    <!-- Thème -->
+    <section id="theme" class="section section-soft">
+      <div class="container narrow center">
+        <h2 class="section-title"><span>Le thème</span></h2>
+        <h3 class="theme-title" data-bind="themeTitle"></h3>
+        <p class="pre" data-bind="themeDescription"></p>
+        <ul class="swatches" id="swatches" aria-label="Couleurs du mariage"></ul>
+        <div class="dresscode" id="dresscode-box">
+          <h4>Code vestimentaire</h4>
+          <p class="pre" data-bind="dressCode"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Menu -->
+    <section id="menu" class="section">
+      <div class="container narrow">
+        <h2 class="section-title"><span>Le menu</span></h2>
+        <p class="center muted" data-bind="menuIntro"></p>
+        <div class="menu-card" id="menu-card"></div>
+        <p class="center muted small" data-bind="menuNote"></p>
+      </div>
+    </section>
+
+    <!-- Hébergements -->
+    <section id="hebergement" class="section section-soft">
+      <div class="container">
+        <h2 class="section-title"><span>Où dormir&nbsp;?</span></h2>
+        <p class="center muted">Quelques hébergements proches. Certains sont réservables directement ici.</p>
+        <div class="map" id="map-gites" role="region" aria-label="Carte des hébergements"></div>
+        <div class="cards" id="gites-list"></div>
+
+        <form class="form card" id="booking-form" novalidate>
+          <h3>Demande de réservation</h3>
+          <p class="muted small" id="booking-closed" hidden>Les réservations en ligne sont closes. Contactez-nous directement.</p>
+          <div class="grid-2">
+            <label class="field full">Hébergement
+              <select name="gite_id" id="booking-gite" required></select>
+            </label>
+            <label class="field">Nom et prénom
+              <input name="name" autocomplete="name" required maxlength="150">
+            </label>
+            <label class="field">Nombre de personnes
+              <input name="persons" type="number" inputmode="numeric" min="1" max="50" value="2" required>
+            </label>
+            <label class="field">E-mail
+              <input name="email" type="email" autocomplete="email" maxlength="200">
+            </label>
+            <label class="field">Téléphone
+              <input name="phone" type="tel" autocomplete="tel" maxlength="40">
+            </label>
+          </div>
+          <fieldset class="field" id="booking-nights">
+            <legend>Nuits souhaitées</legend>
+            <div class="checks" id="nights-checks"></div>
+          </fieldset>
+          <label class="field">Message (facultatif)
+            <textarea name="message" rows="3" maxlength="2000"></textarea>
+          </label>
+          <label class="field code-field" hidden>Code d'invitation
+            <input name="code" autocomplete="off" maxlength="100" placeholder="Indiqué sur votre faire-part">
+          </label>
+          <!-- Champ piège anti-robots : invisible pour les humains -->
+          <div class="hp" aria-hidden="true"><label>Site web <input name="website" tabindex="-1" autocomplete="off"></label></div>
+          <button class="btn btn-primary" type="submit">Envoyer ma demande</button>
+          <p class="form-status" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- RSVP -->
+    <section id="rsvp" class="section">
+      <div class="container narrow">
+        <h2 class="section-title"><span>Votre réponse</span></h2>
+        <p class="center" id="rsvp-deadline"></p>
+        <form class="form card" id="rsvp-form" novalidate>
+          <p class="muted small" id="rsvp-closed" hidden>Les réponses en ligne sont closes. Contactez-nous directement.</p>
+          <label class="field">Nom et prénom (ou « Famille Martin »)
+            <input name="name" autocomplete="name" required maxlength="150">
+          </label>
+          <fieldset class="field">
+            <legend>Serez-vous des nôtres&nbsp;?</legend>
+            <div class="choice">
+              <label class="choice-item"><input type="radio" name="attending" value="yes" required> <span>Avec joie&nbsp;!</span></label>
+              <label class="choice-item"><input type="radio" name="attending" value="no"> <span>Malheureusement non</span></label>
+            </div>
+          </fieldset>
+          <div class="attending-only" hidden>
+            <div class="grid-2">
+              <label class="field">Adultes
+                <input name="adults" type="number" inputmode="numeric" min="0" max="20" value="1">
+              </label>
+              <label class="field">Enfants
+                <input name="children" type="number" inputmode="numeric" min="0" max="20" value="0">
+              </label>
+            </div>
+            <label class="field">Régime alimentaire / allergies
+              <input name="diet" maxlength="500" placeholder="Végétarien, sans gluten, allergie aux noix…">
+            </label>
+          </div>
+          <div class="grid-2">
+            <label class="field">E-mail
+              <input name="email" type="email" autocomplete="email" maxlength="200">
+            </label>
+            <label class="field">Téléphone
+              <input name="phone" type="tel" autocomplete="tel" maxlength="40">
+            </label>
+          </div>
+          <label class="field">Un petit mot pour les mariés&nbsp;?
+            <textarea name="message" rows="3" maxlength="2000"></textarea>
+          </label>
+          <label class="field code-field" hidden>Code d'invitation
+            <input name="code" autocomplete="off" maxlength="100" placeholder="Indiqué sur votre faire-part">
+          </label>
+          <div class="hp" aria-hidden="true"><label>Site web <input name="website" tabindex="-1" autocomplete="off"></label></div>
+          <button class="btn btn-primary" type="submit">Envoyer ma réponse</button>
+          <p class="form-status" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p class="couple-small" data-bind="couple"></p>
+    <p id="contact-line"></p>
+  </footer>
+
+  <noscript><p class="noscript">Ce site a besoin de JavaScript pour afficher les informations.</p></noscript>
+</body>
+</html>

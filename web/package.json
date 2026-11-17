@@ -1,0 +1,14 @@
+{
+  "name": "monmariage-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site statique du mariage (invités + administration)",
+  "scripts": {
+    "vendor": "sh scripts/vendor.sh"
+  },
+  "dependencies": {
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/lato": "^5.3.0",
+    "leaflet": "^1.9.4"
+  }
+}
