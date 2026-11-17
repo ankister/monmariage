@@ -114,7 +114,7 @@ window.MM = (() => {
   function formatTime(iso, tz) {
     return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: tz }).format(new Date(iso)).replace(':', 'h');
   }
-  /** "2027-04-30" -> "30 avril 2027" */
+  /** "2028-06-30" -> "30 juin 2028" */
   function formatDay(ymd) {
     if (!ymd) return '';
     const [y, m, d] = ymd.split('-').map(Number);
