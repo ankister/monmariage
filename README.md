@@ -372,4 +372,4 @@ cd web && npm install && npm run vendor   # puis servir web/public avec un serve
 | Umami : « injoignable depuis le serveur du site » | Le conteneur `api` ne joint pas l'adresse indiquée : essayez l'adresse locale de Umami (IP:port) |
 | Le logo HTML n'affiche pas une image externe | Seules les images du site sont autorisées : envoyez plutôt l'image en mode « Image PNG » |
 | Photo refusée « format non pris en charge » | Photo HEIC d'iPhone ouverte sur un PC Windows : envoyez-la depuis l'iPhone directement (Safari la convertit), ou en JPEG |
-| Modifs du site non visibles chez un invité | Cache navigateur (1 h max pour CSS/JS) → actualisation forcée |
+| Modifs du site non visibles | Les fichiers sont revérifiés à chaque visite ; si besoin, actualisation forcée (Ctrl+F5) |
