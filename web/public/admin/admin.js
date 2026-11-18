@@ -586,31 +586,31 @@
           <label class="field">Note sous le menu<input name="menu_note" value="${esc(c.menu_note)}"></label>
         </section>
 
-        <div class="savebar"><span class="muted small" id="dirty"></span><button class="btn btn-primary" type="submit">Enregistrer</button></div>
-      </form>
-
-      <form class="panel" id="umami-form" novalidate>
+        <section class="panel" id="umami-panel">
         <h2>Statistiques de visite (Umami)</h2>
         <p class="muted small">Renseignez votre instance <strong>Umami</strong> pour suivre les visites du site et de la page « Dormir sur place »
           (l’administration n’est jamais suivie). Le suivi passe par le serveur du site : rien à modifier ailleurs.</p>
         <label class="field">Adresse du script de suivi
-          <input name="script_url" type="url" value="${esc(um.script_url)}" placeholder="https://stats.exemple.fr/script.js">
+          <input name="umami_script_url" type="url" value="${esc(um.script_url)}" placeholder="https://stats.exemple.fr/script.js">
           <small class="help">Dans Umami : Paramètres → Sites web → Modifier → Code de suivi, valeur de <code>src</code>.</small></label>
         <label class="field">Identifiant du site (Website ID)
-          <input name="website_id" value="${esc(um.website_id)}" placeholder="1a2b3c4d-1234-5678-9abc-1234567890ab" autocomplete="off" spellcheck="false">
+          <input name="umami_website_id" value="${esc(um.website_id)}" placeholder="1a2b3c4d-1234-5678-9abc-1234567890ab" autocomplete="off" spellcheck="false">
           <small class="help">Valeur de <code>data-website-id</code> dans le même code.</small></label>
         <label class="field">Lien vers le tableau de bord Umami <span class="help">(facultatif, bouton sur l’Accueil)</span>
-          <input name="dashboard_url" type="url" value="${esc(um.dashboard_url)}" placeholder="https://stats.exemple.fr/websites/…"></label>
+          <input name="umami_dashboard_url" type="url" value="${esc(um.dashboard_url)}" placeholder="https://stats.exemple.fr/websites/…"></label>
         <div class="actions">
-          <button class="btn btn-primary" type="submit">Enregistrer</button>
-          <button class="btn btn-ghost" type="button" id="umami-test">Tester la connexion</button>
+          <button class="btn btn-ghost" type="button" id="umami-test">Enregistrer et tester la connexion</button>
         </div>
         <p class="small umami-status" id="umami-status">${um.script_url && um.website_id ? '✅ Suivi actif' : 'Suivi désactivé (laissez vide pour ne pas suivre).'}</p>
+        </section>
+        <div class="savebar"><span class="muted small" id="dirty"></span><button class="btn btn-primary" type="submit">Enregistrer</button></div>
       </form>`;
+
+
 
     const form = $('#content-form');
     setupLogoEditor(form, c);
-    setupUmami(um);
+    setupUmami(form);
     $('[data-goto-rooms]', form).addEventListener('click', (e) => { e.preventDefault(); go('rooms'); });
 
     // Couleurs
@@ -677,6 +677,7 @@
       btn.disabled = true;
       try {
         await call('/admin/content', { method: 'PUT', body });
+        await saveUmami(form);
         dirty = false;
         $('#dirty').textContent = 'Enregistré ✓';
         $('#brand-couple').textContent = body.couple;
@@ -750,22 +751,23 @@
   }
 
   /* ---------- Statistiques Umami ---------- */
-  function setupUmami() {
-    const f = $('#umami-form');
+  /* Réglages Umami : enregistrés avec le reste du contenu, ou via le bouton de test */
+  const umamiBody = (form) => ({
+    script_url: form.elements.umami_script_url.value.trim(),
+    website_id: form.elements.umami_website_id.value.trim(),
+    dashboard_url: form.elements.umami_dashboard_url.value.trim(),
+  });
+  async function saveUmami(form) {
+    const r = await call('/admin/umami', { method: 'PUT', body: umamiBody(form) });
+    $('#umami-status').textContent = r.enabled ? '✅ Suivi actif' : 'Suivi désactivé (laissez vide pour ne pas suivre).';
+    return r;
+  }
+  function setupUmami(form) {
     const status = $('#umami-status');
-    f.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      try {
-        const r = await call('/admin/umami', { method: 'PUT', body: {
-          script_url: f.elements.script_url.value.trim(), website_id: f.elements.website_id.value.trim(), dashboard_url: f.elements.dashboard_url.value.trim(),
-        } });
-        status.textContent = r.enabled ? '✅ Suivi actif' : 'Suivi désactivé (laissez vide pour ne pas suivre).';
-        toast(r.enabled ? 'Statistiques activées' : 'Statistiques désactivées');
-      } catch (err) { toast(err.message, 'error'); }
-    });
     $('#umami-test').addEventListener('click', async () => {
       status.textContent = 'Test en cours…';
       try {
+        await saveUmami(form);
         const r = await call('/admin/umami/test', { method: 'POST', body: {} });
         status.textContent = r.message;
       } catch (err) { status.textContent = '❌ ' + err.message; }
