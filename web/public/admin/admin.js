@@ -15,12 +15,6 @@
     no: { label: 'Absent', cls: 'pill-no' },
     pending: { label: 'Sans réponse', cls: 'pill-wait' },
   };
-  const BOOKING_STATUS = {
-    pending: { label: 'En attente', cls: 'pill-wait' },
-    confirmed: { label: 'Confirmée', cls: 'pill-ok' },
-    cancelled: { label: 'Annulée', cls: 'pill-no' },
-  };
-
   /* =========================================================
      Utilitaires d'interface
      ========================================================= */
@@ -252,7 +246,6 @@
     const pct = g.households ? Math.round((answered / g.households) * 100) : 0;
     const people = g.adults + g.children;
     const roomPct = s.onsite.rooms ? Math.round((s.onsite.taken / s.onsite.rooms) * 100) : 0;
-    const lodgingPct = s.lodging.capacity ? Math.round((s.lodging.reserved / s.lodging.capacity) * 100) : 0;
     const daysLeft = (() => {
       const [y, m, d] = c.date.slice(0, 10).split('-').map(Number);
       const today = new Date();
@@ -283,13 +276,6 @@
         </section>
 
         <section class="panel">
-          <h2>Gîtes alentours</h2>
-          <div class="progress" role="progressbar" aria-valuenow="${lodgingPct}" aria-valuemin="0" aria-valuemax="100"><span data-w="${lodgingPct}"></span></div>
-          <p class="muted small">${s.lodging.reserved} place(s) réservée(s) sur ${s.lodging.capacity}.</p>
-          ${s.lodging.pending ? `<p><button class="btn btn-small btn-primary" data-goto="lodging">${plural(s.lodging.pending, 'demande', 'demandes')} à valider →</button></p>` : '<p class="muted small">Aucune demande en attente.</p>'}
-        </section>
-
-        <section class="panel">
           <h2>Chambres sur place</h2>
           <div class="progress" role="progressbar" aria-valuenow="${roomPct}" aria-valuemin="0" aria-valuemax="100"><span data-w="${roomPct}"></span></div>
           <p class="muted small">${s.onsite.taken} chambre(s) réservée(s) sur ${s.onsite.rooms} · ${s.onsite.persons} personne(s) logée(s)</p>
@@ -297,15 +283,11 @@
         </section>
 
         <section class="panel">
-          <h2>Régimes &amp; allergies</h2>
+          <h2>Repas</h2>
+          <p class="meal-count"><span>🍽️ <strong>${people - g.veggie}</strong> menus classiques</span><span>🥗 <strong>${g.veggie}</strong> menus végétariens</span></p>
+          <h3 class="panel-sub">Allergies et intolérances</h3>
           ${s.diets.length ? `<ul class="plain-list">${s.diets.map((d) => `<li><strong>${esc(d.name)}</strong> — ${esc(d.diet)}</li>`).join('')}</ul>`
-            : '<p class="muted small">Aucun régime particulier signalé pour l’instant.</p>'}
-        </section>
-
-        <section class="panel">
-          <h2>Derniers messages</h2>
-          ${s.messages.length ? `<ul class="plain-list messages">${s.messages.map((m) => `<li><p>« ${esc(m.message)} »</p><small>${esc(m.name)} · ${fmtDateTime(m.responded_at)}</small></li>`).join('')}</ul>`
-            : '<p class="muted small">Pas encore de message.</p>'}
+            : '<p class="muted small">Aucune allergie signalée pour l’instant.</p>'}
         </section>
       </div>`;
     $$('.progress span', view).forEach((el) => { el.style.width = el.dataset.w + '%'; });
@@ -327,9 +309,10 @@
     { name: 'status', label: 'Réponse', type: 'select', options: Object.entries(GUEST_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'pending' },
     { name: 'adults', label: 'Adultes', type: 'number', min: 0, max: 50, default: 1 },
     { name: 'children', label: 'Enfants', type: 'number', min: 0, max: 50, default: 0 },
+    { name: 'veggie', label: 'Dont menus végétariens', type: 'number', min: 0, max: 100, default: 0 },
     { name: 'email', label: 'E-mail', type: 'email' },
     { name: 'phone', label: 'Téléphone', type: 'tel' },
-    { name: 'diet', label: 'Régime / allergies', full: true },
+    { name: 'diet', label: 'Allergies et intolérances', full: true },
     { name: 'message', label: 'Message laissé', type: 'textarea', full: true },
     { name: 'notes', label: 'Notes internes (non visibles par l’invité)', type: 'textarea', full: true },
   ];
@@ -396,7 +379,7 @@
         <button class="row-card" data-id="${g.id}">
           <span class="row-main"><strong>${esc(g.name)}</strong>
             <small>${g.status === 'yes' ? `${plural(g.adults, 'adulte', 'adultes')}${g.children ? ', ' + plural(g.children, 'enfant', 'enfants') : ''}` : ''}
-            ${g.diet ? ` · 🍽️ ${esc(g.diet)}` : ''}${g.email ? ` · ${esc(g.email)}` : ''}${g.phone ? ` · ${esc(g.phone)}` : ''}</small>
+            ${g.status === 'yes' && g.veggie ? ` · 🥗 ${g.veggie} végé` : ''}${g.diet ? ` · ⚠️ ${esc(g.diet)}` : ''}${g.email ? ` · ${esc(g.email)}` : ''}${g.phone ? ` · ${esc(g.phone)}` : ''}</small>
             ${g.message ? `<small class="quote">« ${esc(g.message)} »</small>` : ''}</span>
           <span class="pill ${GUEST_STATUS[g.status].cls}">${GUEST_STATUS[g.status].label}</span>
         </button>`).join('') : '<p class="empty">Aucun invité ne correspond.</p>';
@@ -423,9 +406,8 @@
     { name: 'capacity', label: 'Capacité (couchages)', type: 'number', min: 0, max: 1000, default: 0 },
     { name: 'price', label: 'Tarif (texte libre)', placeholder: '35 € / pers. / nuit' },
     { name: 'contact', label: 'Contact (tél. ou e-mail)' },
-    { name: 'url', label: 'Site web', type: 'url', placeholder: 'https://…' },
+    { name: 'url', label: 'Lien (bouton « Lien » sur le site)', type: 'url', placeholder: 'https://… (page de réservation, site web, annonce…)', full: true },
     { name: 'description', label: 'Description', type: 'textarea', full: true },
-    { name: 'bookable', label: 'Réservable depuis le site (sinon : informations seulement)', type: 'checkbox', full: true, default: true },
     { name: 'sort', label: 'Ordre d’affichage', type: 'number', default: 0, help: 'Les plus petits nombres apparaissent en premier.' },
     { type: 'map', label: 'Position sur la carte' },
   ];
@@ -443,102 +425,29 @@
         refresh();
       },
       onDelete: g ? async () => { await call(`/admin/gites/${g.id}`, { method: 'DELETE' }); toast('Hébergement supprimé'); refresh(); } : null,
-      deleteConfirm: 'L’hébergement et toutes ses réservations seront supprimés définitivement.',
+      deleteConfirm: 'L’hébergement sera retiré du site définitivement.',
     });
-  }
-
-  function bookingFields(gites) {
-    return [
-      { name: 'gite_id', label: 'Hébergement', type: 'select', full: true, options: gites.map((g) => ({ value: g.id, label: `${g.name} (${g.remaining} libre(s))` })) },
-      { name: 'name', label: 'Nom', required: true },
-      { name: 'persons', label: 'Personnes', type: 'number', min: 1, max: 100, default: 1 },
-      { name: 'email', label: 'E-mail', type: 'email' },
-      { name: 'phone', label: 'Téléphone', type: 'tel' },
-      { name: 'nights', label: 'Nuits', full: true },
-      { name: 'status', label: 'Statut', type: 'select', options: Object.entries(BOOKING_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'confirmed' },
-      { name: 'message', label: 'Message', type: 'textarea', full: true },
-    ];
-  }
-
-  function editBooking(b, gites) {
-    const fields = bookingFields(gites);
-    openModal({
-      title: b ? 'Modifier la réservation' : 'Ajouter une réservation',
-      html: `<div class="grid-2">${fields.map((f) => fieldHtml(f, b?.[f.name])).join('')}</div>
-             ${b ? `<p class="muted small">Demande reçue le ${fmtDateTime(b.created_at)}</p>` : ''}`,
-      onSubmit: async (root) => {
-        const data = readForm(root, fields);
-        if (b) await call(`/admin/bookings/${b.id}`, { method: 'PUT', body: data });
-        else await call('/admin/bookings', { method: 'POST', body: data });
-        toast('Réservation enregistrée');
-        refresh();
-      },
-      onDelete: b ? async () => { await call(`/admin/bookings/${b.id}`, { method: 'DELETE' }); toast('Réservation supprimée'); refresh(); } : null,
-    });
-  }
-
-  async function setBookingStatus(id, status) {
-    try {
-      await call(`/admin/bookings/${id}`, { method: 'PUT', body: { status } });
-      toast(status === 'confirmed' ? 'Réservation confirmée' : status === 'cancelled' ? 'Réservation annulée' : 'Réservation remise en attente');
-      refresh();
-    } catch (err) {
-      toast(err.message, 'error');
-    }
   }
 
   async function lodging() {
-    const [gites, bookings] = await Promise.all([call('/admin/gites'), call('/admin/bookings')]);
-    const pending = bookings.filter((b) => b.status === 'pending').length;
-
+    const gites = await call('/admin/gites');
     view.innerHTML = `
       <div class="page-head row">
-        <h1>Gîtes &amp; réservations</h1>
-        <div class="actions">
-          <button class="btn btn-primary btn-small" id="add-gite">+ Hébergement</button>
-          <button class="btn btn-ghost btn-small" id="add-booking" ${gites.length ? '' : 'disabled'}>+ Réservation</button>
-          <a class="btn btn-ghost btn-small" href="/api/admin/bookings.csv" download>Exporter (Excel)</a>
-        </div>
+        <h1>Gîtes alentours</h1>
+        <div class="actions"><button class="btn btn-primary btn-small" id="add-gite">+ Hébergement</button></div>
       </div>
-      ${pending ? `<p class="notice">📬 ${plural(pending, 'demande attend', 'demandes attendent')} votre validation.</p>` : ''}
-      <div class="gite-list">
-        ${gites.map((g) => {
-          const own = bookings.filter((b) => b.gite_id === g.id);
-          const pct = g.capacity ? Math.min(100, Math.round((g.reserved / g.capacity) * 100)) : 0;
-          return `<section class="panel gite-panel">
-            <header class="gite-panel-head">
-              <div><h2>${esc(g.name)}</h2>
-                <p class="muted small">${esc(g.address || 'Adresse non renseignée')}${hasCoords(g) ? '' : ' · ⚠️ pas de position sur la carte'}</p></div>
-              <button class="btn btn-ghost btn-small" data-edit-gite="${g.id}">Modifier</button>
-            </header>
-            ${g.bookable ? `
-              <div class="progress ${pct >= 100 ? 'full' : ''}"><span data-w="${pct}"></span></div>
-              <p class="small"><strong>${g.reserved} / ${g.capacity}</strong> places réservées · <strong>${g.remaining}</strong> libre(s)</p>`
-              : '<p class="small muted">Informations seulement (non réservable sur le site).</p>'}
-            ${own.length ? `<ul class="bookings">${own.map((b) => `
-              <li class="booking ${b.status}">
-                <div class="booking-main">
-                  <strong>${esc(b.name)}</strong> · ${plural(b.persons, 'pers.', 'pers.')}
-                  <span class="pill ${BOOKING_STATUS[b.status].cls}">${BOOKING_STATUS[b.status].label}</span>
-                  <small>${[b.nights, b.email, b.phone].filter(Boolean).map(esc).join(' · ')}</small>
-                  ${b.message ? `<small class="quote">« ${esc(b.message)} »</small>` : ''}
-                </div>
-                <div class="booking-actions">
-                  ${b.status !== 'confirmed' ? `<button class="btn btn-small btn-primary" data-status="confirmed" data-id="${b.id}">Valider</button>` : ''}
-                  ${b.status !== 'cancelled' ? `<button class="btn btn-small btn-ghost" data-status="cancelled" data-id="${b.id}">Annuler</button>` : ''}
-                  <button class="btn btn-small btn-ghost" data-edit-booking="${b.id}" aria-label="Modifier la réservation de ${esc(b.name)}">✏️</button>
-                </div>
-              </li>`).join('')}</ul>` : (g.bookable ? '<p class="muted small">Aucune réservation.</p>' : '')}
-          </section>`;
-        }).join('') || '<p class="empty">Aucun hébergement. Ajoutez-en un avec le bouton ci-dessus.</p>'}
+      <p class="muted small">Hébergements proposés aux invités autour du lieu. Sur le site, le bouton « Lien » ouvre l’adresse que vous indiquez
+        (page de réservation, site du gîte, annonce…).</p>
+      <div class="list">
+        ${gites.map((g) => `<button class="row-card" data-edit-gite="${g.id}">
+          <span class="row-icon" aria-hidden="true">🏡</span>
+          <span class="row-main"><strong>${esc(g.name)}</strong>
+            <small>${esc(g.address || 'Adresse non renseignée')}${hasCoords(g) ? '' : ' · ⚠️ pas de position sur la carte'}</small>
+            <small>${g.url ? `🔗 ${esc(g.url)}` : '⚠️ Aucun lien : le bouton « Lien » n’apparaît pas'}</small></span>
+          <span class="row-chevron" aria-hidden="true">›</span></button>`).join('') || '<p class="empty">Aucun hébergement. Ajoutez-en un avec le bouton ci-dessus.</p>'}
       </div>`;
-
-    $$('.progress span', view).forEach((el) => { el.style.width = el.dataset.w + '%'; });
     $('#add-gite').addEventListener('click', () => editGite(null));
-    $('#add-booking').addEventListener('click', () => editBooking(null, gites));
     $$('[data-edit-gite]').forEach((b) => b.addEventListener('click', () => editGite(gites.find((g) => g.id === +b.dataset.editGite))));
-    $$('[data-edit-booking]').forEach((b) => b.addEventListener('click', () => editBooking(bookings.find((x) => x.id === +b.dataset.editBooking), gites)));
-    $$('[data-status]').forEach((b) => b.addEventListener('click', () => setBookingStatus(+b.dataset.id, b.dataset.status)));
   }
 
   /* =========================================================
@@ -615,11 +524,10 @@
         </section>
 
         <section class="panel">
-          <h2>Ouverture des formulaires</h2>
+          <h2>Formulaire de réponse</h2>
           <label class="switch"><input type="checkbox" name="rsvp_open" ${c.options.rsvp_open ? 'checked' : ''}><span class="switch-ui" aria-hidden="true"></span><span>Les invités peuvent répondre (RSVP)</span></label>
-          <label class="switch"><input type="checkbox" name="bookings_open" ${c.options.bookings_open ? 'checked' : ''}><span class="switch-ui" aria-hidden="true"></span><span>Les invités peuvent réserver un gîte</span></label>
-          <label class="field">Nuits proposées à la réservation (une par ligne)
-            <textarea name="nights" rows="3">${esc((c.nights || []).join('\n'))}</textarea></label>
+          <label class="switch"><input type="checkbox" name="rsvp_guest_list_only" ${c.options.rsvp_guest_list_only ? 'checked' : ''}><span class="switch-ui" aria-hidden="true"></span><span>Seuls les noms de la liste d’invités peuvent répondre</span></label>
+          <p class="muted small">Le nom saisi est comparé à votre liste (onglet Invités) sans tenir compte des accents, des majuscules ni de l’ordre prénom/nom.</p>
         </section>
 
         <section class="panel">
@@ -702,8 +610,8 @@
       const body = {
         couple: v('couple'), date: v('date'), rsvp_deadline: v('rsvp_deadline'), duration_hours: v('duration_hours'),
         timezone: v('timezone'), welcome: v('welcome'), contact_email: v('contact_email'), contact_phone: v('contact_phone'),
-        nights: v('nights').split('\n').map((s) => s.trim()).filter(Boolean),
-        options: { rsvp_open: form.elements.rsvp_open.checked, bookings_open: form.elements.bookings_open.checked },
+        nights: c.nights || [],
+        options: { rsvp_open: form.elements.rsvp_open.checked, rsvp_guest_list_only: form.elements.rsvp_guest_list_only.checked },
         onsite: { open: form.elements.onsite_open.checked, venue: v('onsite_venue'), intro: v('onsite_intro'), note: v('onsite_note') },
         theme: {
           title: v('theme_title'), description: v('theme_description'), dress_code: v('theme_dress_code'),

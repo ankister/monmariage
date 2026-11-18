@@ -41,6 +41,7 @@
       <a class="btn btn-primary" href="#rsvp">Confirmer ma présence</a>
       <a class="btn btn-ghost" href="/api/calendar.ics" download>Ajouter à mon agenda</a>
     </div>
+    <p class="hero-welcome pre" data-bind="welcome"></p>
   </header>
 
   <nav class="topnav" aria-label="Sections du site">
@@ -48,16 +49,12 @@
       <li><a href="#programme">Programme</a></li>
       <li><a href="#theme">Thème</a></li>
       <li><a href="#menu">Menu</a></li>
-      <li><a href="#hebergement">Dormir</a></li>
+      <li><a href="#hebergement">Logement</a></li>
       <li><a href="#rsvp" class="nav-cta">Répondre</a></li>
     </ul>
   </nav>
 
   <main id="contenu">
-    <section class="intro container narrow">
-      <p class="lead" data-bind="welcome"></p>
-    </section>
-
     <!-- Programme & lieux -->
     <section id="programme" class="section">
       <div class="container">
@@ -101,46 +98,13 @@
             <small id="onsite-promo-text">Réservez une chambre sur le lieu de la réception</small></span>
           <span class="op-cta">Choisir ma chambre →</span>
         </a>
+        <div id="gites-block">
         <h3 class="center sub-title">Autres hébergements à proximité</h3>
-        <p class="center muted">Certains sont réservables directement ici.</p>
+        <p class="center muted">À réserver directement auprès de chaque hébergement.</p>
         <div class="map" id="map-gites" role="region" aria-label="Carte des hébergements"></div>
         <div class="cards" id="gites-list"></div>
+        </div>
 
-        <form class="form card" id="booking-form" novalidate>
-          <h3>Demande de réservation</h3>
-          <p class="muted small" id="booking-closed" hidden>Les réservations en ligne sont closes. Contactez-nous directement.</p>
-          <div class="grid-2">
-            <label class="field full">Hébergement
-              <select name="gite_id" id="booking-gite" required></select>
-            </label>
-            <label class="field">Nom et prénom
-              <input name="name" autocomplete="name" required maxlength="150">
-            </label>
-            <label class="field">Nombre de personnes
-              <input name="persons" type="number" inputmode="numeric" min="1" max="50" value="2" required>
-            </label>
-            <label class="field">E-mail
-              <input name="email" type="email" autocomplete="email" maxlength="200">
-            </label>
-            <label class="field">Téléphone
-              <input name="phone" type="tel" autocomplete="tel" maxlength="40">
-            </label>
-          </div>
-          <fieldset class="field" id="booking-nights">
-            <legend>Nuits souhaitées</legend>
-            <div class="checks" id="nights-checks"></div>
-          </fieldset>
-          <label class="field">Message (facultatif)
-            <textarea name="message" rows="3" maxlength="2000"></textarea>
-          </label>
-          <label class="field code-field" hidden>Code d'invitation
-            <input name="code" autocomplete="off" maxlength="100" placeholder="Indiqué sur votre faire-part">
-          </label>
-          <!-- Champ piège anti-robots : invisible pour les humains -->
-          <div class="hp" aria-hidden="true"><label>Site web <input name="website" tabindex="-1" autocomplete="off"></label></div>
-          <button class="btn btn-primary" type="submit">Envoyer ma demande</button>
-          <p class="form-status" role="status" aria-live="polite"></p>
-        </form>
       </div>
     </section>
 
@@ -151,8 +115,9 @@
         <p class="center" id="rsvp-deadline"></p>
         <form class="form card" id="rsvp-form" novalidate>
           <p class="muted small" id="rsvp-closed" hidden>Les réponses en ligne sont closes. Contactez-nous directement.</p>
-          <label class="field">Nom et prénom (ou « Famille Martin »)
-            <input name="name" autocomplete="name" required maxlength="150">
+          <label class="field">Nom tel qu’il figure sur votre faire-part
+            <input name="name" autocomplete="name" required maxlength="150" placeholder="Ex. Famille Martin, Julie Bernard">
+            <small class="help">Seules les personnes de notre liste d’invités peuvent répondre.</small>
           </label>
           <fieldset class="field">
             <legend>Serez-vous des nôtres&nbsp;?</legend>
@@ -170,8 +135,12 @@
                 <input name="children" type="number" inputmode="numeric" min="0" max="20" value="0">
               </label>
             </div>
-            <label class="field">Régime alimentaire / allergies
-              <input name="diet" maxlength="500" placeholder="Végétarien, sans gluten, allergie aux noix…">
+            <label class="field">Dont menus végétariens
+              <select name="veggie" id="veggie-select"><option value="0">Aucun</option></select>
+              <small class="help">Nombre de personnes qui souhaitent l’option végétarienne.</small>
+            </label>
+            <label class="field">Allergies et intolérances
+              <input name="diet" maxlength="500" placeholder="Ex. sans gluten, allergie aux fruits à coque… (laisser vide si aucune)">
             </label>
           </div>
           <div class="grid-2">
@@ -182,12 +151,18 @@
               <input name="phone" type="tel" autocomplete="tel" maxlength="40">
             </label>
           </div>
-          <label class="field">Un petit mot pour les mariés&nbsp;?
-            <textarea name="message" rows="3" maxlength="2000"></textarea>
-          </label>
           <label class="field code-field" hidden>Code d'invitation
             <input name="code" autocomplete="off" maxlength="100" placeholder="Indiqué sur votre faire-part">
           </label>
+          <div class="field captcha">
+            <span>Vérification anti-robot</span>
+            <div class="captcha-row">
+              <label class="captcha-q" for="captcha-answer" id="captcha-question">Chargement…</label>
+              <input id="captcha-answer" name="captcha_answer" inputmode="numeric" autocomplete="off" required maxlength="3" aria-describedby="captcha-question">
+              <button type="button" class="captcha-new" id="captcha-new" aria-label="Autre question">↻</button>
+            </div>
+            <input type="hidden" name="captcha_token">
+          </div>
           <div class="hp" aria-hidden="true"><label>Site web <input name="website" tabindex="-1" autocomplete="off"></label></div>
           <button class="btn btn-primary" type="submit">Envoyer ma réponse</button>
           <p class="form-status" role="status" aria-live="polite"></p>

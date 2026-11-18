@@ -53,23 +53,25 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
 - Programme (frise horaire) + carte OpenStreetMap des lieux (mairie, église, salle…) avec liens d'itinéraire
 - Thème : description, code vestimentaire, pastilles de couleurs ; **les couleurs du thème colorent le site**
 - Menu présenté comme une carte de restaurant
-- Hébergements : carte, fiches, places restantes en temps réel, demande de réservation
-  (refusée automatiquement si le gîte est complet)
-- Formulaire de réponse (présence, adultes/enfants, régime, message)
+- Gîtes alentours : carte et fiches avec un bouton « Lien » (adresse saisie dans l'admin : page de réservation, site…)
+- Formulaire de réponse : présence, adultes/enfants, nombre de menus végétariens, allergies et intolérances.
+  **Seuls les noms de la liste d'invités peuvent répondre** (accents, majuscules et ordre prénom/nom ignorés ;
+  option désactivable dans Contenu) et une **question anti-robot** (addition, vérifiée par le serveur, sans service tiers)
+  doit être résolue
+- Programme : mairie, église, **séance photos**, réception ou autre lieu
 - **Page « Dormir sur place »** (`/dormir-sur-place/`) : plan interactif du gîte du Grand Breuil
   (rez-de-chaussée et étage, d'après le plan d'architecte), filtres, fiche de chaque chambre avec photos
   et tarifs, réservation avec prénom, nom, nombre de personnes et formule de nuits
   (vendredi + samedi, ou samedi seul). Une chambre réservée disparaît des chambres disponibles.
-- Anti-spam : champ piège invisible + limitation de débit + code d'invitation optionnel
+- Anti-spam : question anti-robot, liste d'invités, champ piège invisible, limitation de débit, code d'invitation optionnel
 - `noindex` : le site n'est pas référencé par les moteurs de recherche
 
 **Côté administration** (`https://paulineetantoine.fr/admin/`)
 - Tableau de bord : personnes attendues, foyers présents / absents / sans réponse, taux de réponse,
-  remplissage des gîtes, régimes alimentaires, derniers messages
+  chambres sur place, nombre de menus classiques / végétariens, allergies
 - Invités : recherche, filtres, ajout / modification / suppression, **collage d'une liste depuis Excel**,
   export CSV (s'ouvre directement dans Excel)
-- Gîtes : ajout / modification avec **placement sur carte d'un simple clic**, capacité, validation /
-  annulation des réservations en un bouton, export CSV
+- Gîtes alentours : ajout / modification avec **placement sur carte d'un simple clic** et le lien du bouton « Lien »
 - Chambres (dormir sur place) : réservations (valider / annuler / modifier, notes internes),
   **prix saisis directement dans la liste**, fiche de chaque chambre, **ajout de photos depuis le téléphone**
   (réduites automatiquement, réordonnables), plan avec le nom des occupants, montant attendu, export CSV
@@ -277,10 +279,10 @@ location /api/admin/ {
 | Ajouter ma liste d'invités | **Invités → Coller une liste** (un nom par ligne, « Nom;2 » pour 2 adultes) |
 | Noter une réponse reçue par téléphone | **Invités → cliquer sur le nom → Réponse** |
 | Donner les chiffres au traiteur | **Accueil** (régimes) ou **Invités → Exporter (Excel)** |
-| Valider une demande de gîte | **Gîtes → Valider** |
-| Agrandir un gîte complet | **Gîtes → Modifier → Capacité** |
+| Changer le lien d'un gîte | **Gîtes → toucher le gîte → Lien** |
 | Changer la date, le menu, les couleurs | **Contenu → Enregistrer** |
-| Fermer les réponses après la date limite | **Contenu → Ouverture des formulaires** |
+| Fermer les réponses après la date limite | **Contenu → Formulaire de réponse** |
+| Autoriser des noms hors liste | **Contenu → Formulaire de réponse → décocher « Seuls les noms de la liste… »** |
 | Exiger un code (imprimé sur le faire-part) | **Sécurité → Code d'invitation** |
 
 Placer un lieu ou un gîte sur la carte : dans la fenêtre de modification, cliquez sur la carte

@@ -35,7 +35,7 @@ function defaultContent() {
     menu_note: 'Allergies ou régime particulier ? Indiquez-le dans le formulaire de réponse.',
     options: {
       rsvp_open: true,
-      bookings_open: true,
+      rsvp_guest_list_only: true, // seuls les noms de la liste d'invités peuvent répondre
     },
     // Page « Dormir sur place » (chambres du lieu de réception)
     onsite: {

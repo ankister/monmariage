@@ -38,7 +38,8 @@ router.get('/stats', (req, res) => {
       SUM(status = 'no')                                         AS no,
       SUM(status = 'pending')                                    AS pending,
       COALESCE(SUM(CASE WHEN status = 'yes' THEN adults END), 0)   AS adults,
-      COALESCE(SUM(CASE WHEN status = 'yes' THEN children END), 0) AS children
+      COALESCE(SUM(CASE WHEN status = 'yes' THEN children END), 0) AS children,
+      COALESCE(SUM(CASE WHEN status = 'yes' THEN veggie END), 0)   AS veggie
     FROM guests`).get();
   const diets = db.prepare(`SELECT id, name, diet FROM guests WHERE status = 'yes' AND diet != '' ORDER BY name`).all();
   const messages = db.prepare(`SELECT id, name, message, responded_at FROM guests
@@ -59,7 +60,7 @@ router.get('/stats', (req, res) => {
       rooms: rooms.total || 0, taken: rooms.taken || 0, beds: rooms.beds || 0,
       persons: roomBookings.persons, pending: roomBookings.pending, amount: roomBookings.amount,
     },
-    guests: { households: g.households || 0, yes: g.yes || 0, no: g.no || 0, pending: g.pending || 0, adults: g.adults, children: g.children },
+    guests: { households: g.households || 0, yes: g.yes || 0, no: g.no || 0, pending: g.pending || 0, adults: g.adults, children: g.children, veggie: g.veggie },
     diets,
     messages,
     lodging: {
@@ -75,11 +76,14 @@ function guestFrom(b) {
   const name = str(b.name, 150);
   if (name.length < 2) throw new HttpError(400, 'Le nom est obligatoire.');
   const status = oneOf(b.status, ['pending', 'yes', 'no'], 'pending');
-  return {
+  const d = {
     name, name_key: nameKey(name), email: email(b.email), phone: str(b.phone, 40), status,
     adults: int(b.adults ?? 1, 0, 50, 'Adultes'), children: int(b.children ?? 0, 0, 50, 'Enfants'),
+    veggie: int(b.veggie ?? 0, 0, 100, 'Menus végétariens'),
     diet: str(b.diet, 500), message: str(b.message, 2000), notes: str(b.notes, 2000),
   };
+  if (d.veggie > d.adults + d.children) throw new HttpError(400, 'Plus de menus végétariens que de personnes.');
+  return d;
 }
 
 router.get('/guests', (req, res) => {
@@ -88,8 +92,8 @@ router.get('/guests', (req, res) => {
 
 router.post('/guests', (req, res) => {
   const d = guestFrom(req.body || {});
-  const info = db.prepare(`INSERT INTO guests (name, name_key, email, phone, status, adults, children, diet, message, notes, source, responded_at)
-    VALUES (@name, @name_key, @email, @phone, @status, @adults, @children, @diet, @message, @notes, 'admin',
+  const info = db.prepare(`INSERT INTO guests (name, name_key, email, phone, status, adults, children, veggie, diet, message, notes, source, responded_at)
+    VALUES (@name, @name_key, @email, @phone, @status, @adults, @children, @veggie, @diet, @message, @notes, 'admin',
             CASE WHEN @status = 'pending' THEN NULL ELSE datetime('now') END)`).run(d);
   res.json({ id: info.lastInsertRowid });
 });
@@ -117,7 +121,7 @@ router.post('/guests/bulk', (req, res) => {
 router.put('/guests/:id', (req, res) => {
   const d = guestFrom(req.body || {});
   const info = db.prepare(`UPDATE guests SET name=@name, name_key=@name_key, email=@email, phone=@phone, status=@status,
-      adults=@adults, children=@children, diet=@diet, message=@message, notes=@notes, updated_at=datetime('now'),
+      adults=@adults, children=@children, veggie=@veggie, diet=@diet, message=@message, notes=@notes, updated_at=datetime('now'),
       responded_at = CASE WHEN @status = 'pending' THEN NULL ELSE COALESCE(responded_at, datetime('now')) END
       WHERE id=@id`).run({ ...d, id: int(req.params.id, 1, 1e9) });
   if (!info.changes) throw new HttpError(404, 'Invité introuvable.');
@@ -136,7 +140,7 @@ router.get('/guests.csv', (req, res) => {
     { label: 'Nom', key: 'name' }, { label: 'Réponse', value: (r) => STATUS_LABEL[r.status] },
     { label: 'Adultes', key: 'adults' }, { label: 'Enfants', key: 'children' },
     { label: 'E-mail', key: 'email' }, { label: 'Téléphone', key: 'phone' },
-    { label: 'Régime / allergies', key: 'diet' }, { label: 'Message', key: 'message' },
+    { label: 'Menus végétariens', key: 'veggie' }, { label: 'Allergies / intolérances', key: 'diet' }, { label: 'Message', key: 'message' },
     { label: 'Notes internes', key: 'notes' }, { label: 'Date de réponse', key: 'responded_at' },
   ]);
   res.set('Content-Type', 'text/csv; charset=utf-8');
@@ -149,7 +153,7 @@ function placeFrom(b) {
   const name = str(b.name, 150);
   if (!name) throw new HttpError(400, 'Le nom du lieu est obligatoire.');
   return {
-    kind: oneOf(b.kind, ['mairie', 'eglise', 'salle', 'autre'], 'autre'), name, address: str(b.address, 300),
+    kind: oneOf(b.kind, ['mairie', 'eglise', 'photos', 'salle', 'autre'], 'autre'), name, address: str(b.address, 300),
     lat: num(b.lat, -90, 90), lng: num(b.lng, -180, 180), time: str(b.time, 50), description: str(b.description, 1000),
     sort: Number.isFinite(+b.sort) ? +b.sort : 0,
   };
@@ -306,7 +310,7 @@ router.put('/content', (req, res) => {
       items: (Array.isArray(s?.items) ? s.items : []).map((i) => str(i, 300)).filter(Boolean).slice(0, 30),
     })).filter((s) => s.title || s.items.length),
     menu_note: str(b.menu_note, 500),
-    options: { rsvp_open: !!b.options?.rsvp_open, bookings_open: !!b.options?.bookings_open },
+    options: { rsvp_open: !!b.options?.rsvp_open, rsvp_guest_list_only: !!b.options?.rsvp_guest_list_only },
     onsite: {
       open: !!b.onsite?.open,
       venue: str(b.onsite?.venue, 120),

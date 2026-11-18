@@ -29,6 +29,7 @@ window.MM = (() => {
   const KINDS = {
     mairie: { label: 'Mairie', icon: '🏛️' },
     eglise: { label: 'Église', icon: '⛪' },
+    photos: { label: 'Séance photos', icon: '📸' },
     salle: { label: 'Réception', icon: '🥂' },
     autre: { label: 'Lieu', icon: '📍' },
   };

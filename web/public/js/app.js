@@ -102,20 +102,10 @@
     $('#menu').hidden = !(c.menu || []).length;
   }
 
-  /* ---------- Hébergements ---------- */
-  function renderGites(gites, content) {
-    const bookable = gites.filter((g) => g.bookable);
-    $('#gites-list').innerHTML = gites.map((g) => {
-      let badge = '';
-      if (g.bookable) {
-        badge = g.remaining > 0
-          ? `<span class="badge badge-ok">${g.remaining} place${g.remaining > 1 ? 's' : ''} disponible${g.remaining > 1 ? 's' : ''}</span>`
-          : '<span class="badge badge-full">Complet</span>';
-      } else {
-        badge = '<span class="badge">Réservation directe</span>';
-      }
-      return `<article class="card gite">
-        <div class="gite-head"><h3>🏡 ${esc(g.name)}</h3>${badge}</div>
+  /* ---------- Hébergements alentours (informations + lien) ---------- */
+  function renderGites(gites) {
+    $('#gites-list').innerHTML = gites.map((g) => `<article class="card gite">
+        <div class="gite-head"><h3>🏡 ${esc(g.name)}</h3></div>
         ${g.address ? `<p class="muted">${esc(g.address)}</p>` : ''}
         ${g.description ? `<p class="pre">${esc(g.description)}</p>` : ''}
         <dl class="facts">
@@ -124,37 +114,10 @@
           ${g.contact ? `<div><dt>Contact</dt><dd>${esc(g.contact)}</dd></div>` : ''}
         </dl>
         <div class="gite-actions">
-          ${g.bookable && g.remaining > 0 && content.options.bookings_open
-            ? `<button class="btn btn-small btn-primary" type="button" data-book="${g.id}">Réserver ici</button>` : ''}
-          ${g.url ? `<a class="link-btn" href="${esc(g.url)}" target="_blank" rel="noopener">Site web →</a>` : ''}
+          ${g.url ? `<a class="btn btn-small btn-primary" href="${esc(g.url)}" target="_blank" rel="noopener">Lien</a>` : ''}
           <a class="link-btn" href="${esc(directionsUrl(g))}" target="_blank" rel="noopener">Itinéraire →</a>
         </div>
-      </article>`;
-    }).join('');
-
-    // Formulaire de réservation
-    const form = $('#booking-form');
-    const available = bookable.filter((g) => g.remaining > 0);
-    if (!bookable.length) {
-      form.hidden = true;
-    } else {
-      $('#booking-gite').innerHTML = available.length
-        ? available.map((g) => `<option value="${g.id}">${esc(g.name)} — ${g.remaining} place(s)</option>`).join('')
-        : '<option value="">Tous les hébergements sont complets</option>';
-      const closed = !content.options.bookings_open || !available.length;
-      $('#booking-closed').hidden = content.options.bookings_open;
-      form.querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = closed; });
-    }
-    const nights = content.nights || [];
-    $('#booking-nights').hidden = !nights.length;
-    $('#nights-checks').innerHTML = nights
-      .map((n) => `<label class="check"><input type="checkbox" name="nights" value="${esc(n)}"> ${esc(n)}</label>`).join('');
-
-    document.querySelectorAll('[data-book]').forEach((btn) => btn.addEventListener('click', () => {
-      $('#booking-gite').value = btn.dataset.book;
-      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setTimeout(() => form.querySelector('[name="name"]').focus({ preventScroll: true }), 500);
-    }));
+      </article>`).join('');
 
     // Carte
     const located = gites.filter(hasCoords);
@@ -176,91 +139,76 @@
     fit(map, bounds);
   }
 
-  /* ---------- Formulaires ---------- */
-  function formData(form) {
-    const fd = new FormData(form);
-    const out = {};
-    for (const [k, v] of fd.entries()) {
-      if (k === 'nights') (out.nights ||= []).push(v);
-      else out[k] = v;
+  /* ---------- Formulaire de réponse ---------- */
+  /** Captcha maison : question de calcul générée et vérifiée par notre serveur (aucun service tiers). */
+  async function loadCaptcha(form) {
+    const q = $('#captcha-question');
+    try {
+      const c = await api('/captcha');
+      q.textContent = c.question;
+      form.querySelector('[name="captcha_token"]').value = c.token;
+      form.querySelector('[name="captcha_answer"]').value = '';
+    } catch {
+      q.textContent = 'Question indisponible, réessayez.';
     }
-    return out;
   }
 
-  function setupForm(form, path, onSuccess) {
+  function setupRsvp(content, codeRequired) {
+    const form = $('#rsvp-form');
     const status = form.querySelector('.form-status');
+    const deadline = content.rsvp_deadline ? formatDay(content.rsvp_deadline) : '';
+    $('#rsvp-deadline').textContent = deadline ? `Merci de nous répondre avant le ${deadline}.` : '';
+    if (!content.options.rsvp_open) {
+      $('#rsvp-closed').hidden = false;
+      form.querySelectorAll('input, select, textarea, button').forEach((el) => { el.disabled = true; });
+    }
+    document.querySelectorAll('.code-field').forEach((f) => {
+      f.hidden = !codeRequired;
+      f.querySelector('input').required = codeRequired;
+    });
+
+    const toggle = () => {
+      const yes = form.querySelector('[name="attending"]:checked')?.value === 'yes';
+      form.querySelector('.attending-only').hidden = !yes;
+    };
+    // Le nombre de menus végétariens ne peut pas dépasser le nombre de personnes
+    const veggie = $('#veggie-select');
+    const updateVeggie = () => {
+      const total = (+form.elements.adults.value || 0) + (+form.elements.children.value || 0);
+      const current = Math.min(+veggie.value || 0, total);
+      veggie.innerHTML = Array.from({ length: total + 1 }, (_, n) =>
+        `<option value="${n}" ${n === current ? 'selected' : ''}>${n === 0 ? 'Aucun' : n === total && total > 1 ? `${n} (tout le monde)` : n}</option>`).join('');
+    };
+    form.querySelectorAll('[name="attending"]').forEach((r) => r.addEventListener('change', toggle));
+    form.elements.adults.addEventListener('input', updateVeggie);
+    form.elements.children.addEventListener('input', updateVeggie);
+    updateVeggie();
+    $('#captcha-new').addEventListener('click', () => loadCaptcha(form));
+    if (content.options.rsvp_open) loadCaptcha(form);
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       status.className = 'form-status';
-      // Validation native du navigateur (champs requis, e-mail…)
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-      }
+      if (!form.checkValidity()) { form.reportValidity(); return; }
       const btn = form.querySelector('button[type="submit"]');
       btn.disabled = true;
       status.textContent = 'Envoi en cours…';
       try {
-        const res = await api(path, { method: 'POST', body: formData(form) });
+        const res = await api('/rsvp', { method: 'POST', body: Object.fromEntries(new FormData(form).entries()) });
         status.textContent = res.message;
         status.classList.add('ok');
-        onSuccess && onSuccess();
+        const code = form.elements.code.value;
+        form.reset();
+        form.elements.code.value = code;
+        toggle();
+        updateVeggie();
       } catch (err) {
         status.textContent = err.message;
         status.classList.add('error');
       } finally {
         btn.disabled = false;
+        loadCaptcha(form); // une question ne sert qu'une fois
       }
-    });
-  }
-
-  function setupRsvp(content, codeRequired) {
-    const form = $('#rsvp-form');
-    const deadline = content.rsvp_deadline ? formatDay(content.rsvp_deadline) : '';
-    $('#rsvp-deadline').textContent = deadline ? `Merci de nous répondre avant le ${deadline}.` : '';
-    if (!content.options.rsvp_open) {
-      $('#rsvp-closed').hidden = false;
-      form.querySelectorAll('input, textarea, button').forEach((el) => { el.disabled = true; });
-    }
-    const toggle = () => {
-      const yes = form.querySelector('[name="attending"]:checked')?.value === 'yes';
-      form.querySelector('.attending-only').hidden = !yes;
-    };
-    form.querySelectorAll('[name="attending"]').forEach((r) => r.addEventListener('change', toggle));
-    setupForm(form, '/rsvp', () => {
-      const code = form.querySelector('[name="code"]').value;
-      form.reset();
-      form.querySelector('[name="code"]').value = code;
-      toggle();
-    });
-    document.querySelectorAll('.code-field').forEach((f) => {
-      f.hidden = !codeRequired;
-      f.querySelector('input').required = codeRequired;
-    });
-  }
-
-  function setupBooking() {
-    const form = $('#booking-form');
-    setupForm(form, '/bookings', async () => {
-      // Rafraîchit les places restantes
-      const fresh = await api('/content');
-      state = fresh;
-      const sel = $('#booking-gite');
-      const keep = fresh.gites.filter((g) => g.bookable && g.remaining > 0);
-      sel.innerHTML = keep.map((g) => `<option value="${g.id}">${esc(g.name)} — ${g.remaining} place(s)</option>`).join('')
-        || '<option value="">Tous les hébergements sont complets</option>';
-      document.querySelectorAll('.gite').forEach((card, i) => {
-        const g = fresh.gites[i];
-        const badge = card.querySelector('.badge');
-        if (g && g.bookable && badge) {
-          badge.textContent = g.remaining > 0 ? `${g.remaining} place${g.remaining > 1 ? 's' : ''} disponible${g.remaining > 1 ? 's' : ''}` : 'Complet';
-          badge.className = 'badge ' + (g.remaining > 0 ? 'badge-ok' : 'badge-full');
-          if (g.remaining <= 0) card.querySelector('[data-book]')?.remove();
-        }
-      });
-      form.querySelectorAll('input:not([type=checkbox]):not([name=code]):not([name=website]), textarea').forEach((el) => {
-        if (el.name !== 'persons') el.value = '';
-      });
     });
   }
 
@@ -286,16 +234,16 @@
     $('#programme').hidden = !state.places.length;
     renderTheme(c.theme);
     renderMenu(c);
-    renderGites(state.gites, c);
+    renderGites(state.gites);
+    $('#gites-block').hidden = !state.gites.length;
     // Encart « Dormir sur place »
     if (c.onsite) {
       $('#onsite-promo-text').textContent = c.onsite.open
         ? `${c.onsite.venue} : choisissez votre chambre sur le plan`
         : `${c.onsite.venue} : voir les chambres (réservations closes)`;
     }
-    $('#hebergement').hidden = !state.gites.length;
+    $('#hebergement').hidden = !state.gites.length && !c.onsite;
     setupRsvp(c, state.code_required);
-    setupBooking();
 
     const contact = [c.contact_email && `<a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a>`,
       c.contact_phone && `<a href="tel:${esc(c.contact_phone.replace(/\s/g, ''))}">${esc(c.contact_phone)}</a>`].filter(Boolean);

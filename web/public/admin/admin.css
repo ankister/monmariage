@@ -251,6 +251,11 @@ p { margin: 0 0 .75rem; }
 .toast.out { opacity: 0; transform: translateY(8px); }
 
 
+/* Tableau de bord : repas */
+.meal-count { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; font-size: 1rem; }
+.meal-count strong { font-family: var(--serif); font-size: 1.6rem; }
+.panel-sub { font-family: var(--sans); font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: .75rem 0 .25rem; }
+
 /* ---------- Chambres sur place ---------- */
 .stat-num small { font-size: 1.1rem; color: var(--muted); }
 .stat-money { font-size: 1.7rem; }

@@ -149,6 +149,12 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 `);
 
+/* ---------- Migrations des bases créées par une version précédente ---------- */
+const guestCols = db.prepare('PRAGMA table_info(guests)').all().map((c) => c.name);
+if (!guestCols.includes('veggie')) {
+  db.exec('ALTER TABLE guests ADD COLUMN veggie INTEGER NOT NULL DEFAULT 0'); // nombre de menus végétariens
+}
+
 /* ---------- Données d'exemple au premier démarrage ---------- */
 function seedIfEmpty() {
   const hasContent = db.prepare("SELECT 1 FROM settings WHERE key = 'content'").get();

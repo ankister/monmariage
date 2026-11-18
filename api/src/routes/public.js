@@ -6,6 +6,7 @@
 const express = require('express');
 const { db, getContent, getPrivate, gitesWithAvailability } = require('../db');
 const { HttpError, str, int, email, nameKey, rateLimit, zonedToUtc } = require('../util');
+const { createCaptcha, verifyCaptcha } = require('../captcha');
 
 const router = express.Router();
 
@@ -19,6 +20,20 @@ function antiSpam(body) {
 }
 
 router.get('/health', (req, res) => res.json({ ok: true }));
+
+/** Question anti-robot du formulaire de réponse. */
+router.get('/captcha', rateLimit('captcha', 60, 10 * 60_000), (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(createCaptcha());
+});
+
+/** Retrouve un invité par son nom : « Dupont Élodie » = « élodie DUPONT ». */
+function findGuest(name) {
+  const key = nameKey(name);
+  const sorted = key.split(' ').sort().join(' ');
+  return db.prepare('SELECT id, name_key FROM guests ORDER BY id').all()
+    .find((g) => g.name_key === key || g.name_key.split(' ').sort().join(' ') === sorted) || null;
+}
 
 router.get('/content', (req, res) => {
   const content = getContent();
@@ -44,6 +59,7 @@ router.post('/rsvp', rateLimit('rsvp', 10, 10 * 60_000), (req, res) => {
 
   const name = str(b.name, 150);
   if (name.length < 2) throw new HttpError(400, 'Merci d’indiquer votre nom.');
+  verifyCaptcha(b.captcha_token, b.captcha_answer);
   const attending = b.attending === 'yes' || b.attending === true;
   const data = {
     name,
@@ -53,24 +69,26 @@ router.post('/rsvp', rateLimit('rsvp', 10, 10 * 60_000), (req, res) => {
     status: attending ? 'yes' : 'no',
     adults: attending ? int(b.adults ?? 1, 0, 20, "Nombre d'adultes") : 0,
     children: attending ? int(b.children ?? 0, 0, 20, "Nombre d'enfants") : 0,
+    veggie: 0,
     diet: attending ? str(b.diet, 500) : '',
-    message: str(b.message, 2000),
   };
   if (attending && data.adults + data.children === 0) throw new HttpError(400, 'Indiquez au moins une personne.');
+  if (attending) data.veggie = int(b.veggie ?? 0, 0, data.adults + data.children, 'Nombre de menus végétariens');
 
-  // Si l'invité existe déjà (ajouté par l'admin ou réponse précédente), on met à jour sa fiche
-  const existing =
-    db.prepare('SELECT id FROM guests WHERE name_key = ? ORDER BY id LIMIT 1').get(data.name_key) ||
-    (data.email ? db.prepare("SELECT id FROM guests WHERE email = ? AND email != '' ORDER BY id LIMIT 1").get(data.email) : null);
+  // On retrouve l'invité dans la liste (accents, majuscules et ordre prénom/nom ignorés)
+  const existing = findGuest(name);
+  if (!existing && content.options.rsvp_guest_list_only) {
+    throw new HttpError(404, 'Nous ne trouvons pas ce nom dans notre liste d’invités. Indiquez-le tel qu’il figure sur votre faire-part (ex. « Famille Martin »), ou contactez-nous.');
+  }
 
   if (existing) {
     db.prepare(`UPDATE guests SET email = COALESCE(NULLIF(@email, ''), email), phone = COALESCE(NULLIF(@phone, ''), phone),
-                status = @status, adults = @adults, children = @children, diet = @diet, message = @message,
+                status = @status, adults = @adults, children = @children, veggie = @veggie, diet = @diet,
                 updated_at = datetime('now'), responded_at = datetime('now') WHERE id = @id`)
       .run({ ...data, id: existing.id });
   } else {
-    db.prepare(`INSERT INTO guests (name, name_key, email, phone, status, adults, children, diet, message, source, responded_at)
-                VALUES (@name, @name_key, @email, @phone, @status, @adults, @children, @diet, @message, 'web', datetime('now'))`)
+    db.prepare(`INSERT INTO guests (name, name_key, email, phone, status, adults, children, veggie, diet, source, responded_at)
+                VALUES (@name, @name_key, @email, @phone, @status, @adults, @children, @veggie, @diet, 'web', datetime('now'))`)
       .run(data);
   }
   res.json({
@@ -78,42 +96,6 @@ router.post('/rsvp', rateLimit('rsvp', 10, 10 * 60_000), (req, res) => {
     message: attending
       ? 'Merci ! Votre présence est bien enregistrée. Nous avons hâte de vous voir.'
       : 'Merci de nous avoir répondu. Vous nous manquerez !',
-  });
-});
-
-/** Réservation : la vérification de capacité et l'insertion sont atomiques (transaction). */
-const bookTx = db.transaction((data) => {
-  const gite = gitesWithAvailability().find((g) => g.id === data.gite_id);
-  if (!gite) throw new HttpError(404, 'Hébergement introuvable.');
-  if (!gite.bookable) throw new HttpError(400, 'Cet hébergement se réserve directement auprès du propriétaire.');
-  if (gite.remaining <= 0) throw new HttpError(409, 'Désolé, cet hébergement est complet.');
-  if (data.persons > gite.remaining) {
-    throw new HttpError(409, `Il ne reste que ${gite.remaining} place(s) dans « ${gite.name} ».`);
-  }
-  db.prepare(`INSERT INTO bookings (gite_id, name, email, phone, persons, nights, message)
-              VALUES (@gite_id, @name, @email, @phone, @persons, @nights, @message)`).run(data);
-  return gite;
-});
-
-router.post('/bookings', rateLimit('booking', 10, 10 * 60_000), (req, res) => {
-  const b = req.body || {};
-  antiSpam(b);
-  if (!getContent().options.bookings_open) throw new HttpError(403, 'Les réservations sont closes. Contactez-nous directement.');
-  const data = {
-    gite_id: int(b.gite_id, 1, 1e9, 'Hébergement'),
-    name: str(b.name, 150),
-    email: email(b.email),
-    phone: str(b.phone, 40),
-    persons: int(b.persons, 1, 50, 'Nombre de personnes'),
-    nights: Array.isArray(b.nights) ? b.nights.map((n) => str(n, 60)).filter(Boolean).join(', ') : str(b.nights, 300),
-    message: str(b.message, 2000),
-  };
-  if (data.name.length < 2) throw new HttpError(400, 'Merci d’indiquer votre nom.');
-  if (!data.email && !data.phone) throw new HttpError(400, 'Indiquez un e-mail ou un téléphone pour que nous puissions vous recontacter.');
-  const gite = bookTx(data);
-  res.json({
-    ok: true,
-    message: `Merci ! Votre demande pour « ${gite.name} » est enregistrée. Nous vous confirmerons la réservation rapidement.`,
   });
 });
 

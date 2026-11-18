@@ -78,6 +78,9 @@ p { margin: 0 0 1rem; }
 .cd-done { font-family: var(--serif); font-size: 1.8rem; margin-bottom: 2rem; }
 
 .hero-actions { display: flex; flex-direction: column; gap: .75rem; width: min(320px, 100%); }
+.hero-welcome {
+  max-width: 620px; margin: 2rem auto 0; font-family: var(--serif); font-size: 1.3rem; line-height: 1.5; color: var(--ink);
+}
 
 /* ---------- Boutons ---------- */
 .btn {
@@ -226,6 +229,13 @@ fieldset.field legend { padding: 0; margin-bottom: .35rem; }
 .form-status { margin: 1rem 0 0; font-weight: 700; min-height: 1.5em; }
 .form-status.ok { color: var(--ok); }
 .form-status.error { color: var(--error); }
+.help { font-weight: 400; color: var(--muted); font-size: .82rem; }
+/* Captcha maison */
+.captcha-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.captcha-q { font-weight: 700; font-size: 1.05rem; }
+.captcha-row input { width: 5.5rem !important; flex: none; text-align: center; font-size: 1.1rem !important; }
+.captcha-new { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff; cursor: pointer; font-size: 1.1rem; color: var(--ink); }
+.captcha-new:hover { border-color: var(--accent); }
 /* Champ piège anti-robots, hors écran */
 .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 
