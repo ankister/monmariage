@@ -287,6 +287,12 @@
     renderTheme(c.theme);
     renderMenu(c);
     renderGites(state.gites, c);
+    // Encart « Dormir sur place »
+    if (c.onsite) {
+      $('#onsite-promo-text').textContent = c.onsite.open
+        ? `${c.onsite.venue} : choisissez votre chambre sur le plan`
+        : `${c.onsite.venue} : voir les chambres (réservations closes)`;
+    }
     $('#hebergement').hidden = !state.gites.length;
     setupRsvp(c, state.code_required);
     setupBooking();

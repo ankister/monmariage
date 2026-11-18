@@ -5,6 +5,7 @@
 
 const express = require('express');
 const { db, getContent, setContent, getPrivate, setPrivate, gitesWithAvailability } = require('../db');
+const roomRoutes = require('./rooms');
 const auth = require('../auth');
 const { HttpError, str, int, num, oneOf, email, url, nameKey, rateLimit, toCsv, isValidTimezone } = require('../util');
 
@@ -43,7 +44,21 @@ router.get('/stats', (req, res) => {
   const messages = db.prepare(`SELECT id, name, message, responded_at FROM guests
                                WHERE message != '' ORDER BY responded_at DESC LIMIT 5`).all();
   const gites = gitesWithAvailability().filter((x) => x.bookable);
+  const rooms = db.prepare(`
+    SELECT COUNT(*) AS total,
+           SUM(EXISTS (SELECT 1 FROM room_bookings b WHERE b.room_id = r.id AND b.status != 'cancelled')) AS taken,
+           SUM(r.capacity) AS beds
+    FROM rooms r WHERE r.bookable = 1`).get();
+  const roomBookings = db.prepare(`
+    SELECT COALESCE(SUM(b.persons), 0) AS persons,
+           COALESCE(SUM(b.status = 'pending'), 0) AS pending,
+           COALESCE(SUM(CASE WHEN b.nights = 'sat' THEN r.price_sat ELSE r.price_both END), 0) AS amount
+    FROM room_bookings b JOIN rooms r ON r.id = b.room_id WHERE b.status != 'cancelled'`).get();
   res.json({
+    onsite: {
+      rooms: rooms.total || 0, taken: rooms.taken || 0, beds: rooms.beds || 0,
+      persons: roomBookings.persons, pending: roomBookings.pending, amount: roomBookings.amount,
+    },
     guests: { households: g.households || 0, yes: g.yes || 0, no: g.no || 0, pending: g.pending || 0, adults: g.adults, children: g.children },
     diets,
     messages,
@@ -292,6 +307,12 @@ router.put('/content', (req, res) => {
     })).filter((s) => s.title || s.items.length),
     menu_note: str(b.menu_note, 500),
     options: { rsvp_open: !!b.options?.rsvp_open, bookings_open: !!b.options?.bookings_open },
+    onsite: {
+      open: !!b.onsite?.open,
+      venue: str(b.onsite?.venue, 120),
+      intro: str(b.onsite?.intro, 3000),
+      note: str(b.onsite?.note, 1500),
+    },
   };
   setContent(next);
   res.json({ ok: true });
@@ -315,5 +336,8 @@ router.put('/security/password', rateLimit('pwd', 10, 15 * 60_000), (req, res) =
   auth.createSession(res, req); // on garde la session courante
   res.json({ ok: true });
 });
+
+/* ---------- Chambres sur place (voir routes/rooms.js) ---------- */
+router.use(roomRoutes.adminRouter);
 
 module.exports = router;

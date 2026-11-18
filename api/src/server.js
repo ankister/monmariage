@@ -9,6 +9,7 @@ require('./db'); // crée le schéma + données d'exemple
 const auth = require('./auth');
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
+const roomRoutes = require('./routes/rooms');
 const { HttpError } = require('./util');
 
 auth.initAdminPassword();
@@ -29,7 +30,9 @@ app.use((req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
   // DELETE sans corps : un formulaire HTML ne peut pas émettre de DELETE, et fetch cross-site déclenche un preflight CORS refusé
   const hasBody = Number(req.get('content-length') || 0) > 0 || req.get('transfer-encoding');
-  if ((req.method !== 'DELETE' || hasBody) && !req.is('application/json')) {
+  // Seul l'envoi de photos (admin) accepte un corps image ; tout le reste est en JSON
+  const isPhotoUpload = /^\/api\/admin\/rooms\/\d+\/photos$/.test(req.path) && req.is(['image/jpeg', 'image/png', 'image/webp']);
+  if ((req.method !== 'DELETE' || hasBody) && !isPhotoUpload && !req.is('application/json')) {
     return res.status(415).json({ error: 'Format de requête non supporté.' });
   }
   const origin = req.get('origin');
@@ -45,6 +48,7 @@ app.use((req, res, next) => {
 
 app.use('/api/admin', adminRoutes);
 app.use('/api', publicRoutes);
+app.use('/api', roomRoutes.publicRouter);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Ressource introuvable.' }));
 
 // Gestion centralisée des erreurs (Express 5 transmet aussi les erreurs des fonctions async)

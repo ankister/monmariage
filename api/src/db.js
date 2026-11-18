@@ -8,9 +8,13 @@ const path = require('node:path');
 const fs = require('node:fs');
 const Database = require('better-sqlite3');
 const { defaultContent, defaultPlaces, defaultGites } = require('./seed');
+const { defaultRooms } = require('./rooms-seed');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
+// Photos des chambres (dans le même volume que la base : une seule chose à sauvegarder)
+const MEDIA_DIR = path.join(DATA_DIR, 'media', 'rooms');
+fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 const db = new Database(path.join(DATA_DIR, 'mariage.sqlite'));
 db.pragma('journal_mode = WAL'); // lectures concurrentes sans blocage
@@ -90,6 +94,54 @@ CREATE TABLE IF NOT EXISTS bookings (
 );
 CREATE INDEX IF NOT EXISTS idx_bookings_gite ON bookings(gite_id);
 
+-- Chambres du lieu de réception (« Dormir sur place »)
+CREATE TABLE IF NOT EXISTS rooms (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  code         TEXT NOT NULL UNIQUE,            -- identifiant stable (ch1…ch21)
+  name         TEXT NOT NULL,
+  short_name   TEXT NOT NULL,                   -- libellé affiché sur le plan
+  floor        TEXT NOT NULL,                   -- rdc | etage
+  area         TEXT NOT NULL DEFAULT '',
+  capacity     INTEGER NOT NULL DEFAULT 2,      -- couchages (bébé compris)
+  beds         TEXT NOT NULL DEFAULT '',
+  bath         TEXT NOT NULL DEFAULT '',
+  private_bath INTEGER NOT NULL DEFAULT 0,
+  baby_bed     INTEGER NOT NULL DEFAULT 0,
+  description  TEXT NOT NULL DEFAULT '',
+  price_both   REAL,                            -- prix de la chambre pour vendredi + samedi
+  price_sat    REAL,                            -- prix de la chambre pour le samedi seul
+  bookable     INTEGER NOT NULL DEFAULT 1,      -- 0 = non proposée (ex. réservée aux mariés)
+  x REAL NOT NULL DEFAULT 0, y REAL NOT NULL DEFAULT 0, w REAL NOT NULL DEFAULT 100, h REAL NOT NULL DEFAULT 100,
+  bed_icon     TEXT NOT NULL DEFAULT 'double',
+  sort         INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS room_photos (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id    INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  filename   TEXT NOT NULL,
+  sort       INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_room_photos_room ON room_photos(room_id);
+
+CREATE TABLE IF NOT EXISTS room_bookings (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id    INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  first_name TEXT NOT NULL,
+  last_name  TEXT NOT NULL,
+  email      TEXT NOT NULL DEFAULT '',
+  phone      TEXT NOT NULL DEFAULT '',
+  persons    INTEGER NOT NULL DEFAULT 1,
+  nights     TEXT NOT NULL DEFAULT 'both',    -- both = vendredi + samedi | sat = samedi seul
+  message    TEXT NOT NULL DEFAULT '',
+  notes      TEXT NOT NULL DEFAULT '',        -- notes internes (paiement…)
+  status     TEXT NOT NULL DEFAULT 'pending', -- pending | confirmed | cancelled
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_room_bookings_room ON room_bookings(room_id);
+
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
   created_at INTEGER NOT NULL,
@@ -112,6 +164,13 @@ function seedIfEmpty() {
     const ins = db.prepare(`INSERT INTO gites (name, address, lat, lng, capacity, price, contact, url, description, bookable, sort)
                             VALUES (@name, @address, @lat, @lng, @capacity, @price, @contact, @url, @description, @bookable, @sort)`);
     defaultGites().forEach((g, i) => ins.run({ ...g, sort: i }));
+  }
+  if (db.prepare('SELECT COUNT(*) AS n FROM rooms').get().n === 0) {
+    const ins = db.prepare(`INSERT INTO rooms (code, name, short_name, floor, area, capacity, beds, bath, private_bath, baby_bed,
+                              description, x, y, w, h, bed_icon, sort)
+                            VALUES (@code, @name, @short_name, @floor, @area, @capacity, @beds, @bath, @private_bath, @baby_bed,
+                              @description, @x, @y, @w, @h, @bed_icon, @sort)`);
+    db.transaction(() => defaultRooms().forEach((r) => ins.run(r)))();
   }
 }
 seedIfEmpty();
@@ -153,6 +212,25 @@ function gitesWithAvailability() {
   `).all().map((g) => ({ ...g, bookable: !!g.bookable, remaining: Math.max(0, g.capacity - g.reserved) }));
 }
 
+/**
+ * Chambres avec leurs photos et la réservation active éventuelle.
+ * Les deux formules (ven.+sam. / sam. seul) incluent la nuit du samedi :
+ * une chambre ne peut donc avoir qu'une seule réservation non annulée.
+ */
+function roomsWithStatus() {
+  const rooms = db.prepare('SELECT * FROM rooms ORDER BY sort, id').all();
+  const photos = db.prepare('SELECT id, room_id, filename FROM room_photos ORDER BY sort, id').all();
+  const active = db.prepare("SELECT * FROM room_bookings WHERE status != 'cancelled' ORDER BY id").all();
+  return rooms.map((r) => ({
+    ...r,
+    private_bath: !!r.private_bath,
+    baby_bed: !!r.baby_bed,
+    bookable: !!r.bookable,
+    photos: photos.filter((p) => p.room_id === r.id).map((p) => ({ id: p.id, url: `/api/media/rooms/${p.filename}` })),
+    booking: active.find((b) => b.room_id === r.id) || null,
+  }));
+}
+
 function isPlainObject(v) {
   return v && typeof v === 'object' && !Array.isArray(v);
 }
@@ -164,4 +242,4 @@ function deepMerge(base, over) {
   return out;
 }
 
-module.exports = { db, getContent, setContent, getPrivate, setPrivate, gitesWithAvailability };
+module.exports = { db, MEDIA_DIR, getContent, setContent, getPrivate, setPrivate, gitesWithAvailability, roomsWithStatus };

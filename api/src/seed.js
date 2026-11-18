@@ -37,6 +37,14 @@ function defaultContent() {
       rsvp_open: true,
       bookings_open: true,
     },
+    // Page « Dormir sur place » (chambres du lieu de réception)
+    onsite: {
+      open: true,
+      venue: 'Gîte du Grand Breuil',
+      intro:
+        'Le gîte du Grand Breuil, où a lieu la réception, compte 21 chambres. Choisissez la vôtre sur le plan, puis indiquez vos nuits : vendredi et samedi, ou samedi uniquement.',
+      note: 'Les modalités de règlement vous seront communiquées une fois votre réservation validée.',
+    },
   };
 }
 

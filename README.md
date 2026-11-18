@@ -56,6 +56,10 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
 - Hébergements : carte, fiches, places restantes en temps réel, demande de réservation
   (refusée automatiquement si le gîte est complet)
 - Formulaire de réponse (présence, adultes/enfants, régime, message)
+- **Page « Dormir sur place »** (`/dormir-sur-place/`) : plan interactif du gîte du Grand Breuil
+  (rez-de-chaussée et étage, d'après le plan d'architecte), filtres, fiche de chaque chambre avec photos
+  et tarifs, réservation avec prénom, nom, nombre de personnes et formule de nuits
+  (vendredi + samedi, ou samedi seul). Une chambre réservée disparaît des chambres disponibles.
 - Anti-spam : champ piège invisible + limitation de débit + code d'invitation optionnel
 - `noindex` : le site n'est pas référencé par les moteurs de recherche
 
@@ -66,6 +70,9 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
   export CSV (s'ouvre directement dans Excel)
 - Gîtes : ajout / modification avec **placement sur carte d'un simple clic**, capacité, validation /
   annulation des réservations en un bouton, export CSV
+- Chambres (dormir sur place) : réservations (valider / annuler / modifier, notes internes),
+  **prix saisis directement dans la liste**, fiche de chaque chambre, **ajout de photos depuis le téléphone**
+  (réduites automatiquement, réordonnables), plan avec le nom des occupants, montant attendu, export CSV
 - Lieux : programme et positions sur la carte
 - Contenu : date, textes, thème et couleurs, menu (étapes réordonnables), ouverture/fermeture des formulaires
 - Sécurité : code d'invitation, changement du mot de passe
@@ -95,10 +102,12 @@ monmariage/
 │       ├── server.js           # point d'entrée, protection CSRF, erreurs
 │       ├── db.js               # schéma SQLite, données d'exemple
 │       ├── seed.js             # contenu d'exemple du premier démarrage
+│       ├── rooms-seed.js       # les 21 chambres du Grand Breuil (d'après le plan)
 │       ├── auth.js             # mot de passe (scrypt) et sessions
 │       ├── util.js             # validation, CSV, fuseaux horaires, anti-spam
 │       └── routes/
 │           ├── public.js       # contenu, RSVP, réservations, agenda .ics
+│           ├── rooms.js        # chambres sur place : réservations, prix, photos
 │           └── admin.js        # toutes les routes d'administration
 └── web/                        # front statique + Nginx
     ├── Dockerfile
@@ -110,7 +119,12 @@ monmariage/
         ├── css/style.css, css/fonts.css
         ├── js/common.js        # fonctions partagées (API, cartes, thème)
         ├── js/app.js           # site invités
+        ├── js/onsite-plan.js   # plan SVG du gîte (partagé site / admin)
+        ├── js/onsite.js        # page « Dormir sur place »
+        ├── css/plan.css, css/onsite.css
+        ├── dormir-sur-place/index.html
         ├── admin/index.html, admin.css, admin.js   # administration
+        ├── admin/admin-rooms.js                    # onglet Chambres
         ├── favicon.svg
         └── robots.txt
 ```
@@ -253,6 +267,12 @@ location /api/admin/ {
 
 | Je veux… | Où |
 |---|---|
+| Fixer le prix des chambres sur place | **Chambres → Chambres & prix** (2 nuits / samedi seul, enregistrement automatique) |
+| Ajouter des photos d'une chambre | **Chambres → Chambres & prix → toucher la chambre → + Ajouter des photos** |
+| Valider une réservation de chambre | **Chambres → Réservations → Valider** |
+| Libérer une chambre | **Chambres → Réservations → Annuler** (la chambre redevient disponible) |
+| Bloquer une chambre (pour vous, la famille…) | **Chambres → fiche → décocher « Proposée à la réservation »**, ou ajouter une réservation vous-même |
+| Ouvrir / fermer les réservations de chambres | **Contenu → Page « Dormir sur place »** |
 | Voir combien de personnes viennent | **Accueil** |
 | Ajouter ma liste d'invités | **Invités → Coller une liste** (un nom par ligne, « Nom;2 » pour 2 adultes) |
 | Noter une réponse reçue par téléphone | **Invités → cliquer sur le nom → Réponse** |
@@ -271,7 +291,8 @@ OpenStreetMap ou Google Maps (« 43.6112, 1.3349 ») dans le champ *Latitude*.
 
 ## 6. Sauvegardes
 
-Toutes les données tiennent dans `DATA_PATH` (`mariage.sqlite` + fichiers `-wal`/`-shm`).
+Toutes les données tiennent dans `DATA_PATH` : `mariage.sqlite` (+ fichiers `-wal`/`-shm`)
+et le dossier `media/` qui contient les photos des chambres.
 Incluez ce dossier dans vos sauvegardes habituelles (Backrest/restic, Appdata Backup…).
 
 Pour une copie garantie cohérente pendant que le site tourne :
@@ -328,4 +349,5 @@ cd web && npm install && npm run vendor   # puis servir web/public avec un serve
 | « Origine refusée » dans l'admin | Le nom de domaine reçu ne correspond pas : vérifiez que NPM transmet bien l'en-tête Host (comportement par défaut) |
 | La carte reste grise | Le navigateur ne joint pas `tile.openstreetmap.org` (bloqueur, réseau filtré) |
 | Les cartes n'affichent pas un lieu | Le lieu n'a pas de coordonnées : un ⚠️ l'indique dans l'admin |
+| Photo refusée « format non pris en charge » | Photo HEIC d'iPhone ouverte sur un PC Windows : envoyez-la depuis l'iPhone directement (Safari la convertit), ou en JPEG |
 | Modifs du site non visibles chez un invité | Cache navigateur (1 h max pour CSS/JS) → actualisation forcée |

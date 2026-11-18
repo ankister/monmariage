@@ -188,6 +188,20 @@ p { margin: 0 0 1rem; }
 .facts dd { margin: 0; font-weight: 700; }
 .gite-actions { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; align-items: center; }
 
+/* Encart vers la page « Dormir sur place » */
+.onsite-promo {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; text-decoration: none; color: var(--ink);
+  background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1.1rem 1.25rem;
+  box-shadow: var(--shadow); margin: 0 0 2.5rem; transition: transform .15s;
+}
+.onsite-promo:hover { transform: translateY(-2px); }
+.op-icon { font-size: 2rem; }
+.op-text { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
+.op-text strong { font-family: var(--serif); font-size: 1.6rem; line-height: 1.1; }
+.op-text small { color: var(--muted); font-size: .95rem; }
+.op-cta { font-weight: 700; background: var(--accent); color: var(--on-accent); border-radius: 999px; padding: .6rem 1.1rem; }
+.sub-title { font-size: 1.5rem; margin-bottom: .25rem; }
+
 /* ---------- Formulaires ---------- */
 .form h3 { font-size: 1.6rem; }
 .field { display: flex; flex-direction: column; gap: .35rem; margin: 0 0 1rem; font-weight: 700; font-size: .92rem; border: 0; padding: 0; min-width: 0; }

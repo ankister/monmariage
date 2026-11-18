@@ -81,7 +81,7 @@ p { margin: 0 0 .75rem; }
 /* Onglets : barre fixe en bas sur mobile */
 .tabs {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-  display: grid; grid-template-columns: repeat(6, 1fr);
+  display: grid; grid-template-columns: repeat(7, 1fr);
   background: var(--surface); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -90,7 +90,7 @@ p { margin: 0 0 .75rem; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit;
 }
 .tabs button span { font-size: 1.3rem; line-height: 1; }
-.tabs button b { font-size: .68rem; font-weight: 700; }
+.tabs button b { font-size: .64rem; font-weight: 700; }
 .tabs button[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
 
 .main { padding: 1.25rem 1rem calc(var(--tabs-h) + 2rem + env(safe-area-inset-bottom)); max-width: 1100px; margin: 0 auto; outline: none; }
@@ -249,6 +249,59 @@ p { margin: 0 0 .75rem; }
 .toast { background: var(--ink); color: #fff; padding: .8rem 1rem; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.2); font-weight: 700; font-size: .92rem; transition: opacity .4s, transform .4s; }
 .toast-error { background: var(--no); }
 .toast.out { opacity: 0; transform: translateY(8px); }
+
+
+/* ---------- Chambres sur place ---------- */
+.stat-num small { font-size: 1.1rem; color: var(--muted); }
+.stat-money { font-size: 1.7rem; }
+.segmented { display: flex; gap: .25rem; background: #ece6dc; padding: .25rem; border-radius: 12px; margin: 0 0 1rem; overflow-x: auto; scrollbar-width: none; }
+.segmented button {
+  flex: 1; border: 0; background: none; border-radius: 9px; padding: .55rem .75rem; font: 700 .88rem var(--sans);
+  color: var(--ink); cursor: pointer; white-space: nowrap; min-height: 42px;
+}
+.segmented button span { color: var(--muted); font-weight: 400; }
+.segmented button[aria-selected="true"] { background: var(--surface); box-shadow: var(--shadow); color: var(--accent); }
+.small-seg { max-width: 420px; }
+.room-bookings { margin-top: .75rem; }
+.room-bookings .empty { list-style: none; }
+.floor-title { margin: 1.25rem 0 .6rem; }
+.room-rows { display: flex; flex-direction: column; gap: .5rem; }
+.room-row {
+  display: flex; flex-direction: column; gap: .5rem; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: .6rem;
+}
+.room-row.is-off { opacity: .65; }
+.rr-main { display: flex; align-items: center; gap: .75rem; background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; min-width: 0; }
+.rr-thumb { flex: none; width: 56px; height: 56px; border-radius: 10px; overflow: hidden; background: #efe9df; display: grid; place-items: center; font-size: 1.3rem; }
+.rr-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.rr-prices { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.rr-prices label { display: flex; flex-direction: column; gap: .2rem; font-size: .75rem; font-weight: 700; color: var(--muted); }
+.euro { position: relative; display: block; }
+.euro::after { content: '€'; position: absolute; right: .7rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 700; }
+.euro input { width: 100%; min-height: 44px; padding: .5rem 1.8rem .5rem .7rem; border: 1.5px solid var(--line); border-radius: 10px; font: 400 1rem var(--sans); }
+.euro input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(86,100,74,.18); }
+.euro input.saved { border-color: var(--ok); background: var(--ok-bg); }
+.plan-panel .plan-scroll > div { min-width: 760px; }
+
+.photo-manager { border: 1px solid var(--line); border-radius: 12px; padding: .9rem; margin-bottom: 1rem; background: #fcfbf8; }
+.pm-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.pm-head h3 { margin: 0; font-family: var(--serif); font-size: 1.3rem; }
+.pm-add { cursor: pointer; }
+.pm-progress { font-weight: 700; color: var(--accent); min-height: 1.2em; margin: 0 0 .5rem; }
+.pm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .6rem; }
+.pm-item { position: relative; margin: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+.pm-item img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.pm-item figcaption { display: flex; justify-content: space-between; gap: .25rem; padding: .35rem; }
+.pm-item .icon-btn { width: 36px; height: 36px; }
+.pm-item .icon-btn:disabled { opacity: .35; cursor: default; }
+.icon-btn.danger:hover { border-color: var(--no); }
+.pm-cover { position: absolute; top: 6px; left: 6px; background: var(--accent); color: #fff; font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 6px; }
+.empty.small { padding: 1rem; font-size: .88rem; grid-column: 1 / -1; }
+
+@media (min-width: 640px) {
+  .room-row { flex-direction: row; align-items: center; justify-content: space-between; }
+  .rr-prices { width: 260px; flex: none; }
+}
 
 /* ---------- Tablette ---------- */
 @media (min-width: 640px) {

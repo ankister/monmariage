@@ -95,12 +95,19 @@
   /* ---------- Fenêtre modale ---------- */
   const modal = $('#modal');
   let modalSubmit = null;
+  let modalOnClose = null;
+  modal.addEventListener('close', () => {
+    const fn = modalOnClose;
+    modalOnClose = null;
+    if (fn) fn();
+  });
 
   /**
    * Ouvre un formulaire dans la modale.
    * buttons : [{ label, action: 'submit'|'delete', cls }]
    */
-  function openModal({ title, html, onSubmit, submitLabel = 'Enregistrer', onDelete, deleteLabel = 'Supprimer', deleteConfirm = 'Cette action est définitive.', afterOpen }) {
+  function openModal({ title, html, onSubmit, submitLabel = 'Enregistrer', onDelete, deleteLabel = 'Supprimer', deleteConfirm = 'Cette action est définitive.', afterOpen, onClose }) {
+    modalOnClose = onClose || null;
     $('#modal-title').textContent = title;
     $('#modal-body').innerHTML = html;
     $('#modal-error').textContent = '';
@@ -218,6 +225,7 @@
      Navigation
      ========================================================= */
   const views = { dashboard, guests, lodging, places, content, security };
+  // Les autres fichiers (admin-rooms.js) ajoutent leurs vues via MMAdmin.registerView
   let current = 'dashboard';
 
   function go(name) {
@@ -243,6 +251,7 @@
     const answered = g.yes + g.no;
     const pct = g.households ? Math.round((answered / g.households) * 100) : 0;
     const people = g.adults + g.children;
+    const roomPct = s.onsite.rooms ? Math.round((s.onsite.taken / s.onsite.rooms) * 100) : 0;
     const lodgingPct = s.lodging.capacity ? Math.round((s.lodging.reserved / s.lodging.capacity) * 100) : 0;
     const daysLeft = (() => {
       const [y, m, d] = c.date.slice(0, 10).split('-').map(Number);
@@ -274,10 +283,17 @@
         </section>
 
         <section class="panel">
-          <h2>Hébergements</h2>
+          <h2>Gîtes alentours</h2>
           <div class="progress" role="progressbar" aria-valuenow="${lodgingPct}" aria-valuemin="0" aria-valuemax="100"><span data-w="${lodgingPct}"></span></div>
           <p class="muted small">${s.lodging.reserved} place(s) réservée(s) sur ${s.lodging.capacity}.</p>
           ${s.lodging.pending ? `<p><button class="btn btn-small btn-primary" data-goto="lodging">${plural(s.lodging.pending, 'demande', 'demandes')} à valider →</button></p>` : '<p class="muted small">Aucune demande en attente.</p>'}
+        </section>
+
+        <section class="panel">
+          <h2>Chambres sur place</h2>
+          <div class="progress" role="progressbar" aria-valuenow="${roomPct}" aria-valuemin="0" aria-valuemax="100"><span data-w="${roomPct}"></span></div>
+          <p class="muted small">${s.onsite.taken} chambre(s) réservée(s) sur ${s.onsite.rooms} · ${s.onsite.persons} personne(s) logée(s)</p>
+          ${s.onsite.pending ? `<p><button class="btn btn-small btn-primary" data-goto="rooms">${plural(s.onsite.pending, 'demande', 'demandes')} à valider →</button></p>` : '<p class="muted small">Aucune demande en attente.</p>'}
         </section>
 
         <section class="panel">
@@ -607,6 +623,15 @@
         </section>
 
         <section class="panel">
+          <h2>Page « Dormir sur place »</h2>
+          <label class="switch"><input type="checkbox" name="onsite_open" ${c.onsite.open ? 'checked' : ''}><span class="switch-ui" aria-hidden="true"></span><span>Les invités peuvent réserver une chambre</span></label>
+          <label class="field">Nom du lieu<input name="onsite_venue" value="${esc(c.onsite.venue)}"></label>
+          <label class="field">Texte d’introduction<textarea name="onsite_intro" rows="3">${esc(c.onsite.intro)}</textarea></label>
+          <label class="field">Note (règlement, arrivée…)<textarea name="onsite_note" rows="2">${esc(c.onsite.note)}</textarea></label>
+          <p class="muted small">Les chambres, leurs prix et leurs photos se gèrent dans l’onglet <a href="#rooms" data-goto-rooms>Chambres</a>.</p>
+        </section>
+
+        <section class="panel">
           <h2>Thème</h2>
           <label class="field">Nom du thème<input name="theme_title" value="${esc(c.theme.title)}"></label>
           <label class="field">Description<textarea name="theme_description" rows="4">${esc(c.theme.description)}</textarea></label>
@@ -629,6 +654,7 @@
       </form>`;
 
     const form = $('#content-form');
+    $('[data-goto-rooms]', form).addEventListener('click', (e) => { e.preventDefault(); go('rooms'); });
 
     // Couleurs
     const colorRow = (hex) => `<div class="color-row"><input type="color" value="${esc(hex)}" aria-label="Couleur">
@@ -678,6 +704,7 @@
         timezone: v('timezone'), welcome: v('welcome'), contact_email: v('contact_email'), contact_phone: v('contact_phone'),
         nights: v('nights').split('\n').map((s) => s.trim()).filter(Boolean),
         options: { rsvp_open: form.elements.rsvp_open.checked, bookings_open: form.elements.bookings_open.checked },
+        onsite: { open: form.elements.onsite_open.checked, venue: v('onsite_venue'), intro: v('onsite_intro'), note: v('onsite_note') },
         theme: {
           title: v('theme_title'), description: v('theme_description'), dress_code: v('theme_dress_code'),
           colors: $$('.color-row .hex', form).map((i) => i.value.trim()).filter((x) => /^#[0-9a-f]{6}$/i.test(x)),
@@ -751,6 +778,13 @@
       } catch (err) { errEl.textContent = err.message; }
     });
   }
+
+  /* ---------- Utilitaires partagés avec admin-rooms.js ---------- */
+  window.MMAdmin = {
+    $, $$, call, toast, openModal, confirmBox, fieldHtml, readForm, fmtDateTime, plural, view,
+    refresh: () => refresh(),
+    registerView: (name, fn) => { views[name] = fn; },
+  };
 
   /* =========================================================
      Connexion

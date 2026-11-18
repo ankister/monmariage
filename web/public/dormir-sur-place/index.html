@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Dormir sur place</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/onsite.css">
+  <script src="/js/common.js" defer></script>
+  <script src="/js/onsite-plan.js" defer></script>
+  <script src="/js/onsite.js" defer></script>
+</head>
+<body class="onsite-page">
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+
+  <header class="mini-header">
+    <a class="back-link" href="/#hebergement">← <span data-bind="couple">Notre mariage</span></a>
+    <a class="btn btn-small btn-ghost" href="/#rsvp">Répondre à l’invitation</a>
+  </header>
+
+  <main id="contenu">
+    <section class="onsite-hero container">
+      <p class="eyebrow" data-bind="venue"></p>
+      <h1>Dormir sur place</h1>
+      <p class="lead-small pre" data-bind="intro"></p>
+      <div class="onsite-stats" id="onsite-stats" aria-live="polite"></div>
+      <div class="nights-info" id="nights-info"></div>
+      <p class="closed-banner" id="closed-banner" hidden>Les réservations en ligne sont closes. Contactez-nous directement pour toute demande.</p>
+    </section>
+
+    <section class="container">
+      <div class="plan-controls card">
+        <div class="floor-tabs" role="tablist" aria-label="Choisir l’étage">
+          <button type="button" role="tab" data-floor="rdc" aria-selected="true"><strong>Rez-de-chaussée</strong><small id="tab-rdc-sub"></small></button>
+          <button type="button" role="tab" data-floor="etage" aria-selected="false"><strong>Étage</strong><small id="tab-etage-sub"></small></button>
+        </div>
+        <div class="chips-row" role="group" aria-label="Filtrer les chambres">
+          <button type="button" class="filter-chip" data-filter="all" aria-pressed="true">Toutes</button>
+          <button type="button" class="filter-chip" data-filter="available" aria-pressed="false">Disponibles</button>
+          <button type="button" class="filter-chip" data-filter="private_bath" aria-pressed="false">🚿 Salle d’eau privative</button>
+          <button type="button" class="filter-chip" data-filter="baby_bed" aria-pressed="false">👶 Lit bébé</button>
+          <button type="button" class="filter-chip" data-filter="large" aria-pressed="false">👨‍👩‍👧 3 personnes et +</button>
+        </div>
+      </div>
+
+      <div class="card plan-card">
+        <div class="plan-scroll" id="plan-scroll" tabindex="0" aria-label="Plan du bâtiment, faites défiler horizontalement sur mobile">
+          <div id="plan"></div>
+        </div>
+        <ul class="legend" aria-label="Légende du plan">
+          <li><span class="lg lg-free"></span>Disponible</li>
+          <li><span class="lg lg-taken"></span>Déjà réservée</li>
+          <li><span class="lg lg-bath"></span>Sanitaires</li>
+          <li><span class="lg lg-common"></span>Parties communes</li>
+        </ul>
+        <p class="muted small plan-hint">Touchez une chambre sur le plan ou dans la liste pour voir ses photos et la réserver.</p>
+      </div>
+
+      <h2 class="list-title" id="list-title">Les chambres</h2>
+      <div class="room-grid" id="room-grid"></div>
+      <p class="center muted small pre" data-bind="note"></p>
+    </section>
+  </main>
+
+  <!-- Fiche chambre + formulaire -->
+  <dialog class="room-dialog" id="room-dialog" aria-labelledby="rd-title">
+    <div class="rd-inner">
+      <header class="rd-head">
+        <div>
+          <p class="rd-floor" id="rd-floor"></p>
+          <h2 id="rd-title"></h2>
+        </div>
+        <button type="button" class="rd-close" id="rd-close" aria-label="Fermer">✕</button>
+      </header>
+      <div class="rd-body" id="rd-body"></div>
+    </div>
+  </dialog>
+
+  <footer class="footer">
+    <p class="couple-small" data-bind="couple"></p>
+    <p><a href="/">Retour au site du mariage</a></p>
+  </footer>
+  <noscript><p class="noscript">Cette page a besoin de JavaScript.</p></noscript>
+</body>
+</html>

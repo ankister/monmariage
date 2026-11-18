@@ -1,0 +1,52 @@
+/* Plan SVG du gîte — partagé entre la page « Dormir sur place » et l'administration.
+   --accent / --accent-2 viennent du thème. */
+.floor-plan { display: block; width: 100%; height: auto; font-family: 'Lato', system-ui, sans-serif; }
+.floor-plan text { pointer-events: none; }
+.z-wall { fill: #fff; stroke: #44403c; stroke-width: 10; }
+.z-common { fill: #f3f0e8; stroke: #d6cfc2; stroke-width: 1; }
+.z-hall { fill: #efece4; stroke: #d6cfc2; stroke-width: 1; }
+.z-tech { fill: #efece6; stroke: #c7bfb2; stroke-width: 1.2; }
+.z-stair { fill: #e6e1d6; stroke: #a8a092; stroke-width: 1.2; }
+.z-steps line { stroke: #8c857b; stroke-width: 1; }
+.z-bath { fill: #ebf1f5; stroke: #9bb0c1; stroke-width: 1; }
+.z-kitchen { fill: #f7f1e5; stroke: #d4c3a3; stroke-width: 1.2; }
+.z-arrow { stroke: #57534e; stroke-width: 1.5; fill: none; }
+.z-label { fill: #78716c; font-weight: 600; }
+.z-strong { fill: #57534e; font-weight: 700; }
+.z-spaced { letter-spacing: 1.5px; }
+.z-bathlabel { fill: #3b5b75; font-weight: 700; }
+.z-kitchenlabel { fill: #785a28; font-weight: 700; }
+
+.room { cursor: pointer; outline: none; transition: opacity .2s; }
+.room .bg { fill: #f5f9f6; stroke: var(--accent, #56644a); stroke-width: 1.5; transition: stroke-width .15s, fill .15s; }
+.room .beds rect { fill: #fff; stroke: #b8cfc0; stroke-width: 1; }
+.room .beds .child { stroke: #e0a17f; }
+.room .beds .crib { stroke: #e0a17f; stroke-dasharray: 2 2; }
+.room .name { fill: #1e3528; font-weight: 700; }
+.room .area { fill: #4b6356; font-weight: 500; }
+.room .pill { fill: var(--accent, #56644a); }
+.room .pill-text { fill: #fff; font-weight: 700; }
+.room:hover .bg, .room:focus-visible .bg { stroke-width: 3.5; fill: #eef5f0; }
+.room:focus-visible .bg { stroke: var(--accent-2, #c9a46c); }
+
+.room.is-taken .bg, .room.is-off .bg { fill: #e7e3dc; stroke: #b8b0a2; }
+.room.is-taken .name, .room.is-off .name { fill: #78716c; }
+.room.is-taken .area, .room.is-off .area { fill: #8c857b; }
+.room.is-taken .pill, .room.is-off .pill { fill: #a39b8e; }
+.room.is-taken .beds rect, .room.is-off .beds rect { fill: #efece6; stroke: #c9c2b6; }
+
+.room.is-selected .bg { fill: color-mix(in srgb, var(--accent-2, #c9a46c) 22%, #fff); stroke: var(--accent-2, #c9a46c); stroke-width: 4; }
+.room.is-selected .pill { fill: var(--accent-2, #c9a46c); }
+.room.is-dim { opacity: .28; }
+
+.plan-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+.plan-scroll > div { min-width: 760px; }
+@media (min-width: 900px) { .plan-scroll > div { min-width: 0; } }
+
+.legend { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; padding: 0; margin: .75rem 0 0; font-size: .85rem; }
+.legend li { display: flex; align-items: center; gap: .4rem; }
+.lg { width: 16px; height: 16px; border-radius: 4px; display: inline-block; border: 2px solid; }
+.lg-free { background: #f5f9f6; border-color: var(--accent, #56644a); }
+.lg-taken { background: #e7e3dc; border-color: #b8b0a2; }
+.lg-bath { background: #ebf1f5; border-color: #9bb0c1; border-width: 1px; }
+.lg-common { background: #f3f0e8; border-color: #d6cfc2; border-width: 1px; }
