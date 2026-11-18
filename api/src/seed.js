@@ -37,6 +37,13 @@ function defaultContent() {
       rsvp_open: true,
       rsvp_guest_list_only: true, // seuls les noms de la liste d'invités peuvent répondre
     },
+    // Logo affiché au-dessus de « Nous nous marions » : ornement par défaut, image envoyée ou code HTML/CSS
+    logo: {
+      mode: 'ornament', // ornament | image | html
+      image: '',        // nom du fichier envoyé depuis l'admin
+      height: 110,      // hauteur d'affichage de l'image, en pixels
+      html: '',
+    },
     // Page « Dormir sur place » (chambres du lieu de réception)
     onsite: {
       open: true,

@@ -76,7 +76,9 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
   **prix saisis directement dans la liste**, fiche de chaque chambre, **ajout de photos depuis le téléphone**
   (réduites automatiquement, réordonnables), plan avec le nom des occupants, montant attendu, export CSV
 - Lieux : programme et positions sur la carte
-- Contenu : date, textes, thème et couleurs, menu (étapes réordonnables), ouverture/fermeture des formulaires
+- Contenu : date, textes, thème et couleurs, menu (étapes réordonnables), ouverture/fermeture des formulaires,
+  **logo** (image PNG envoyée depuis l'admin, ou code HTML/CSS avec aperçu) affiché au-dessus de « Nous nous marions »,
+  **statistiques de visite Umami** (adresse du script + identifiant du site, bouton de test)
 - Sécurité : code d'invitation, changement du mot de passe
 - Barre d'onglets en bas d'écran sur téléphone, barre latérale sur ordinateur
 
@@ -291,10 +293,26 @@ OpenStreetMap ou Google Maps (« 43.6112, 1.3349 ») dans le champ *Latitude*.
 
 ---
 
+## 5 bis. Statistiques de visite (Umami)
+
+Dans **Contenu → Statistiques de visite (Umami)** :
+
+1. Dans Umami, ajoutez un site (Paramètres → Sites web → Ajouter), puis ouvrez son **code de suivi**.
+2. Copiez la valeur de `src` dans « Adresse du script » et celle de `data-website-id` dans « Identifiant du site ».
+3. **Enregistrer**, puis **Tester la connexion**.
+
+Le script et les mesures transitent par le serveur du site (`/api/stats/…`), qui les relaie à Umami :
+la politique de sécurité du site reste stricte, l'adresse de votre Umami n'est jamais visible des invités
+et le suivi n'est pas bloqué par les bloqueurs de publicité courants. L'administration n'est jamais suivie.
+
+> Comme c'est le serveur du site qui contacte Umami, vous pouvez indiquer une **adresse du réseau local**
+> (ex. `http://192.168.1.55:3001/script.js`) si l'adresse publique ne fonctionne pas depuis Docker
+> (problème de « hairpin NAT »). « Tester la connexion » vous le dira.
+
 ## 6. Sauvegardes
 
 Toutes les données tiennent dans `DATA_PATH` : `mariage.sqlite` (+ fichiers `-wal`/`-shm`)
-et le dossier `media/` qui contient les photos des chambres.
+et le dossier `media/` qui contient les photos des chambres et le logo.
 Incluez ce dossier dans vos sauvegardes habituelles (Backrest/restic, Appdata Backup…).
 
 Pour une copie garantie cohérente pendant que le site tourne :
@@ -351,5 +369,7 @@ cd web && npm install && npm run vendor   # puis servir web/public avec un serve
 | « Origine refusée » dans l'admin | Le nom de domaine reçu ne correspond pas : vérifiez que NPM transmet bien l'en-tête Host (comportement par défaut) |
 | La carte reste grise | Le navigateur ne joint pas `tile.openstreetmap.org` (bloqueur, réseau filtré) |
 | Les cartes n'affichent pas un lieu | Le lieu n'a pas de coordonnées : un ⚠️ l'indique dans l'admin |
+| Umami : « injoignable depuis le serveur du site » | Le conteneur `api` ne joint pas l'adresse indiquée : essayez l'adresse locale de Umami (IP:port) |
+| Le logo HTML n'affiche pas une image externe | Seules les images du site sont autorisées : envoyez plutôt l'image en mode « Image PNG » |
 | Photo refusée « format non pris en charge » | Photo HEIC d'iPhone ouverte sur un PC Windows : envoyez-la depuis l'iPhone directement (Safari la convertit), ou en JPEG |
 | Modifs du site non visibles chez un invité | Cache navigateur (1 h max pour CSS/JS) → actualisation forcée |

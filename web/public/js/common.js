@@ -122,5 +122,38 @@ window.MM = (() => {
     return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d)));
   }
 
-  return { esc, api, KINDS, applyTheme, makeMap, pinIcon, hasCoords, directionsUrl, formatDateLong, formatTime, formatDay };
+  /* ---------- Statistiques de visite (Umami, relayé par notre serveur) ---------- */
+  async function loadAnalytics() {
+    try {
+      const cfg = await api('/stats/config');
+      if (!cfg.enabled) return;
+      const s = document.createElement('script');
+      s.defer = true;
+      s.src = '/api/stats/script.js';
+      s.dataset.websiteId = cfg.website_id;
+      s.dataset.hostUrl = '/api/stats'; // le script enverra à /api/stats/api/send
+      document.head.append(s);
+    } catch { /* les statistiques ne doivent jamais gêner l'affichage */ }
+  }
+
+  /* ---------- Logo (image envoyée ou code HTML/CSS) ---------- */
+  function renderLogo(host, logo) {
+    if (!host || !logo) return;
+    if (logo.mode === 'image' && logo.image) {
+      const img = document.createElement('img');
+      img.src = `/api/media/site/${logo.image}`;
+      img.alt = 'Logo';
+      img.className = 'logo-img';
+      img.style.height = `${logo.height || 110}px`;
+      host.replaceChildren(img);
+    } else if (logo.mode === 'html' && logo.html) {
+      // Shadow DOM : le CSS du logo n'affecte pas le reste du site (et inversement)
+      const box = document.createElement('div');
+      box.className = 'logo-html';
+      box.attachShadow({ mode: 'open' }).innerHTML = logo.html;
+      host.replaceChildren(box);
+    }
+  }
+
+  return { esc, api, KINDS, applyTheme, loadAnalytics, renderLogo, makeMap, pinIcon, hasCoords, directionsUrl, formatDateLong, formatTime, formatDay };
 })();

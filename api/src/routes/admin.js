@@ -6,6 +6,7 @@
 const express = require('express');
 const { db, getContent, setContent, getPrivate, setPrivate, gitesWithAvailability } = require('../db');
 const roomRoutes = require('./rooms');
+const siteRoutes = require('./site');
 const auth = require('../auth');
 const { HttpError, str, int, num, oneOf, email, url, nameKey, rateLimit, toCsv, isValidTimezone } = require('../util');
 
@@ -311,6 +312,12 @@ router.put('/content', (req, res) => {
     })).filter((s) => s.title || s.items.length),
     menu_note: str(b.menu_note, 500),
     options: { rsvp_open: !!b.options?.rsvp_open, rsvp_guest_list_only: !!b.options?.rsvp_guest_list_only },
+    logo: {
+      mode: oneOf(b.logo?.mode, ['ornament', 'image', 'html'], 'ornament'),
+      image: cur.logo.image, // l'image se change via /admin/logo
+      height: int(b.logo?.height ?? cur.logo.height, 30, 400, 'Hauteur du logo'),
+      html: typeof b.logo?.html === 'string' ? b.logo.html.slice(0, 20000) : cur.logo.html,
+    },
     onsite: {
       open: !!b.onsite?.open,
       venue: str(b.onsite?.venue, 120),
@@ -343,5 +350,6 @@ router.put('/security/password', rateLimit('pwd', 10, 15 * 60_000), (req, res) =
 
 /* ---------- Chambres sur place (voir routes/rooms.js) ---------- */
 router.use(roomRoutes.adminRouter);
+router.use(siteRoutes.adminRouter);
 
 module.exports = router;

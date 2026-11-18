@@ -61,7 +61,10 @@ p { margin: 0 0 1rem; }
     radial-gradient(ellipse at bottom, color-mix(in srgb, var(--accent-raw) 18%, transparent), transparent 65%),
     var(--bg);
 }
-.ornament { width: 120px; color: var(--accent-2); margin-bottom: 1rem; }
+.ornament { width: 120px; color: var(--accent-2); }
+.hero-logo { margin-bottom: 1rem; display: flex; justify-content: center; max-width: 100%; }
+.logo-img { display: block; max-width: min(320px, 80vw); width: auto; object-fit: contain; }
+.logo-html { max-width: 100%; }
 .eyebrow { letter-spacing: .25em; text-transform: uppercase; font-size: .8rem; color: var(--muted); margin-bottom: .5rem; }
 .couple { font-size: clamp(2.6rem, 11vw, 5.5rem); font-weight: 400; margin-bottom: .75rem; color: var(--ink); }
 .hero-date { font-family: var(--serif); font-size: clamp(1.3rem, 4.5vw, 1.8rem); font-style: italic; margin-bottom: .25rem; }

@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const express = require('express');
 const { db, MEDIA_DIR, getContent, getPrivate, roomsWithStatus } = require('../db');
-const { HttpError, str, int, oneOf, email, rateLimit, toCsv } = require('../util');
+const { HttpError, str, int, oneOf, email, rateLimit, toCsv, imageType } = require('../util');
 
 const NIGHTS = ['both', 'sat'];
 
@@ -149,14 +149,6 @@ adminRouter.put('/rooms/:id', (req, res) => {
 
 /* ---------- Photos ---------- */
 const MAX_PHOTOS = 20;
-/** Reconnaît le format réel du fichier (on ne se fie pas à l'en-tête Content-Type). */
-function imageType(buf) {
-  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';
-  if (buf.length > 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
-  if (buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return 'webp';
-  return null;
-}
-
 adminRouter.post(
   '/rooms/:id/photos',
   express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '8mb' }),

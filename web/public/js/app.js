@@ -4,7 +4,7 @@
 'use strict';
 
 (() => {
-  const { esc, api, KINDS, applyTheme, makeMap, pinIcon, hasCoords, directionsUrl, formatDateLong, formatDay } = window.MM;
+  const { esc, api, KINDS, applyTheme, loadAnalytics, renderLogo, makeMap, pinIcon, hasCoords, directionsUrl, formatDateLong, formatDay } = window.MM;
   const $ = (sel, root = document) => root.querySelector(sel);
 
   let state = null;
@@ -222,6 +222,8 @@
     }
     const c = state.content;
     applyTheme(c.theme.colors);
+    renderLogo($('#hero-logo'), c.logo);
+    loadAnalytics();
     document.title = `Mariage ${c.couple}`;
     bind('couple', c.couple);
     bind('dateLong', c.date_utc ? formatDateLong(c.date_utc, c.timezone) : '');

@@ -240,7 +240,7 @@
      Vue : Accueil (tableau de bord)
      ========================================================= */
   async function dashboard() {
-    const [s, c] = await Promise.all([call('/admin/stats'), call('/admin/content')]);
+    const [s, c, um] = await Promise.all([call('/admin/stats'), call('/admin/content'), call('/admin/umami')]);
     const g = s.guests;
     const answered = g.yes + g.no;
     const pct = g.households ? Math.round((answered / g.households) * 100) : 0;
@@ -257,6 +257,7 @@
         <h1>Bonjour 👋</h1>
         <p class="muted">${daysLeft > 0 ? `Plus que <strong>${plural(daysLeft, 'jour', 'jours')}</strong> avant le mariage.` : daysLeft === 0 ? "C'est le grand jour !" : 'Le mariage est passé.'}
         ${c.rsvp_deadline ? ` Date limite de réponse : <strong>${esc(formatDay(c.rsvp_deadline))}</strong>.` : ''}</p>
+        ${um.dashboard_url ? `<a class="btn btn-ghost btn-small" href="${esc(um.dashboard_url)}" target="_blank" rel="noopener">📈 Statistiques de visite</a>` : ''}
       </div>
 
       <div class="stats">
@@ -503,7 +504,7 @@
      Vue : Contenu du site
      ========================================================= */
   async function content() {
-    const c = await call('/admin/content');
+    const [c, um] = await Promise.all([call('/admin/content'), call('/admin/umami')]);
     view.innerHTML = `
       <div class="page-head"><h1>Contenu du site</h1>
         <p class="muted small">Les modifications sont visibles immédiatement sur le site après enregistrement.</p></div>
@@ -520,6 +521,33 @@
             <label class="field full">Mot d’accueil<textarea name="welcome" rows="4">${esc(c.welcome)}</textarea></label>
             <label class="field">E-mail de contact<input type="email" name="contact_email" value="${esc(c.contact_email)}"></label>
             <label class="field">Téléphone de contact<input type="tel" name="contact_phone" value="${esc(c.contact_phone)}"></label>
+          </div>
+        </section>
+
+        <section class="panel" id="logo-panel">
+          <h2>Logo</h2>
+          <p class="muted small">Affiché en haut du site, au-dessus de « Nous nous marions ».</p>
+          <div class="seg-radio" role="radiogroup" aria-label="Type de logo">
+            <label><input type="radio" name="logo_mode" value="ornament" ${c.logo.mode === 'ornament' ? 'checked' : ''}><span>Trait décoratif</span></label>
+            <label><input type="radio" name="logo_mode" value="image" ${c.logo.mode === 'image' ? 'checked' : ''}><span>Image PNG</span></label>
+            <label><input type="radio" name="logo_mode" value="html" ${c.logo.mode === 'html' ? 'checked' : ''}><span>Code HTML/CSS</span></label>
+          </div>
+          <div class="logo-opt" data-for="image">
+            <div class="logo-preview" id="logo-image-preview"></div>
+            <div class="actions">
+              <label class="btn btn-primary btn-small">Envoyer une image<input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp" hidden></label>
+              <button type="button" class="btn btn-ghost btn-small" id="logo-remove">Retirer l’image</button>
+            </div>
+            <p class="muted small">PNG à fond transparent conseillé. L’image est envoyée telle quelle (4 Mo maximum).</p>
+            <label class="field">Hauteur d’affichage : <output id="logo-height-out">${esc(c.logo.height)}</output> px
+              <input type="range" name="logo_height" min="40" max="300" step="5" value="${esc(c.logo.height)}"></label>
+          </div>
+          <div class="logo-opt" data-for="html">
+            <label class="field">Code HTML et CSS du logo
+              <textarea name="logo_html" rows="8" class="code" spellcheck="false" placeholder="&lt;style&gt;.monogramme { font: 48px Georgia; color: #b5654a; }&lt;/style&gt;&#10;&lt;div class=&quot;monogramme&quot;&gt;P &amp;amp; A&lt;/div&gt;">${esc(c.logo.html)}</textarea>
+              <small class="help">Le CSS n’agit que sur le logo. Les scripts ne sont pas exécutés et seules les images du site sont autorisées.</small></label>
+            <p class="small"><strong>Aperçu</strong></p>
+            <div class="logo-preview" id="logo-html-preview"></div>
           </div>
         </section>
 
@@ -559,9 +587,30 @@
         </section>
 
         <div class="savebar"><span class="muted small" id="dirty"></span><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+      </form>
+
+      <form class="panel" id="umami-form" novalidate>
+        <h2>Statistiques de visite (Umami)</h2>
+        <p class="muted small">Renseignez votre instance <strong>Umami</strong> pour suivre les visites du site et de la page « Dormir sur place »
+          (l’administration n’est jamais suivie). Le suivi passe par le serveur du site : rien à modifier ailleurs.</p>
+        <label class="field">Adresse du script de suivi
+          <input name="script_url" type="url" value="${esc(um.script_url)}" placeholder="https://stats.exemple.fr/script.js">
+          <small class="help">Dans Umami : Paramètres → Sites web → Modifier → Code de suivi, valeur de <code>src</code>.</small></label>
+        <label class="field">Identifiant du site (Website ID)
+          <input name="website_id" value="${esc(um.website_id)}" placeholder="1a2b3c4d-1234-5678-9abc-1234567890ab" autocomplete="off" spellcheck="false">
+          <small class="help">Valeur de <code>data-website-id</code> dans le même code.</small></label>
+        <label class="field">Lien vers le tableau de bord Umami <span class="help">(facultatif, bouton sur l’Accueil)</span>
+          <input name="dashboard_url" type="url" value="${esc(um.dashboard_url)}" placeholder="https://stats.exemple.fr/websites/…"></label>
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Enregistrer</button>
+          <button class="btn btn-ghost" type="button" id="umami-test">Tester la connexion</button>
+        </div>
+        <p class="small umami-status" id="umami-status">${um.script_url && um.website_id ? '✅ Suivi actif' : 'Suivi désactivé (laissez vide pour ne pas suivre).'}</p>
       </form>`;
 
     const form = $('#content-form');
+    setupLogoEditor(form, c);
+    setupUmami(um);
     $('[data-goto-rooms]', form).addEventListener('click', (e) => { e.preventDefault(); go('rooms'); });
 
     // Couleurs
@@ -618,6 +667,7 @@
           colors: $$('.color-row .hex', form).map((i) => i.value.trim()).filter((x) => /^#[0-9a-f]{6}$/i.test(x)),
         },
         menu_intro: v('menu_intro'), menu_note: v('menu_note'),
+        logo: { mode: form.querySelector('[name=logo_mode]:checked')?.value || 'ornament', height: v('logo_height'), html: v('logo_html') },
         menu: $$('.course', form).map((b) => ({
           title: $('.course-title', b).value.trim(),
           items: $('.course-items', b).value.split('\n').map((s) => s.trim()).filter(Boolean),
@@ -636,6 +686,89 @@
       } finally {
         btn.disabled = false;
       }
+    });
+  }
+
+  /* ---------- Éditeur de logo ---------- */
+  function setupLogoEditor(form, c) {
+    let image = c.logo.image;
+    const imgPrev = $('#logo-image-preview');
+    const htmlPrev = $('#logo-html-preview');
+    const height = form.elements.logo_height;
+    const showOpt = () => {
+      const mode = form.querySelector('[name=logo_mode]:checked').value;
+      $$('.logo-opt', form).forEach((o) => { o.hidden = o.dataset.for !== mode; });
+    };
+    const drawImage = () => {
+      imgPrev.innerHTML = image ? `<img src="/api/media/site/${esc(image)}" alt="Logo actuel">` : '<span class="muted small">Aucune image envoyée.</span>';
+      const img = $('img', imgPrev);
+      if (img) img.style.height = `${height.value}px`;
+      $('#logo-remove').hidden = !image;
+    };
+    const drawHtml = () => {
+      const box = document.createElement('div');
+      box.attachShadow({ mode: 'open' }).innerHTML = form.elements.logo_html.value || '<span style="color:#888;font:14px sans-serif">Aperçu du code</span>';
+      htmlPrev.replaceChildren(box);
+    };
+    form.querySelectorAll('[name=logo_mode]').forEach((r) => r.addEventListener('change', showOpt));
+    height.addEventListener('input', () => { $('#logo-height-out').textContent = height.value; drawImage(); });
+    form.elements.logo_html.addEventListener('input', drawHtml);
+
+    $('#logo-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      try {
+        const res = await fetch('/api/admin/logo', {
+          method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': file.type || 'image/png' }, body: file,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+        image = data.url.split('/').pop();
+        form.querySelector('[name=logo_mode][value=image]').checked = true;
+        showOpt();
+        drawImage();
+        toast('Logo envoyé et affiché sur le site');
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+    $('#logo-remove').addEventListener('click', async () => {
+      if (!(await confirmBox('Retirer le logo ?', 'Le trait décoratif sera de nouveau affiché.'))) return;
+      try {
+        await call('/admin/logo', { method: 'DELETE' });
+        image = '';
+        form.querySelector('[name=logo_mode][value=ornament]').checked = true;
+        showOpt();
+        drawImage();
+        toast('Logo retiré');
+      } catch (err) { toast(err.message, 'error'); }
+    });
+    showOpt();
+    drawImage();
+    drawHtml();
+  }
+
+  /* ---------- Statistiques Umami ---------- */
+  function setupUmami() {
+    const f = $('#umami-form');
+    const status = $('#umami-status');
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const r = await call('/admin/umami', { method: 'PUT', body: {
+          script_url: f.elements.script_url.value.trim(), website_id: f.elements.website_id.value.trim(), dashboard_url: f.elements.dashboard_url.value.trim(),
+        } });
+        status.textContent = r.enabled ? '✅ Suivi actif' : 'Suivi désactivé (laissez vide pour ne pas suivre).';
+        toast(r.enabled ? 'Statistiques activées' : 'Statistiques désactivées');
+      } catch (err) { toast(err.message, 'error'); }
+    });
+    $('#umami-test').addEventListener('click', async () => {
+      status.textContent = 'Test en cours…';
+      try {
+        const r = await call('/admin/umami/test', { method: 'POST', body: {} });
+        status.textContent = r.message;
+      } catch (err) { status.textContent = '❌ ' + err.message; }
     });
   }
 

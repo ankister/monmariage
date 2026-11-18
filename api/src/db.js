@@ -248,4 +248,4 @@ function deepMerge(base, over) {
   return out;
 }
 
-module.exports = { db, MEDIA_DIR, getContent, setContent, getPrivate, setPrivate, gitesWithAvailability, roomsWithStatus };
+module.exports = { db, DATA_DIR, MEDIA_DIR, getContent, setContent, getPrivate, setPrivate, gitesWithAvailability, roomsWithStatus };
