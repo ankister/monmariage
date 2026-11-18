@@ -33,6 +33,12 @@ function defaultContent() {
       { title: 'Dessert', items: ['Pièce montée', 'Buffet de douceurs'] },
     ],
     menu_note: 'Allergies ou régime particulier ? Indiquez-le dans le formulaire de réponse.',
+    // Questions fréquentes : une question sans réponse n'est pas affichée sur le site
+    faq: [
+      { q: 'Puis-je venir avec des enfants ?', a: '' },
+      { q: 'Quelles sont les possibilités de stationnement ?', a: '' },
+      { q: 'Le lieu est-il accessible ?', a: '' },
+    ],
     options: {
       rsvp_open: true,
       rsvp_guest_list_only: true, // seuls les noms de la liste d'invités peuvent répondre

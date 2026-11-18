@@ -6,6 +6,7 @@
 (() => {
   const { esc, api, KINDS, applyTheme, loadAnalytics, renderLogo, makeMap, pinIcon, hasCoords, directionsUrl, formatDateLong, formatDay } = window.MM;
   const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
   let state = null;
 
@@ -100,6 +101,18 @@
         <ul>${s.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>
       </div>`).join('<div class="menu-sep" aria-hidden="true">✦</div>');
     $('#menu').hidden = !(c.menu || []).length;
+  }
+
+  /* ---------- Questions fréquentes ---------- */
+  function renderFaq(faq) {
+    const items = (faq || []).filter((f) => f.q && f.a); // une question sans réponse n'est pas affichée
+    $('#faq').hidden = !items.length;
+    $$('a[href="#faq"]').forEach((a) => { a.parentElement.hidden = !items.length; });
+    $('#faq-list').innerHTML = items.map((f) => `
+      <details class="faq-item">
+        <summary>${esc(f.q)}</summary>
+        <div class="faq-answer pre">${esc(f.a)}</div>
+      </details>`).join('');
   }
 
   /* ---------- Hébergements alentours (informations + lien) ---------- */
@@ -236,6 +249,7 @@
     $('#programme').hidden = !state.places.length;
     renderTheme(c.theme);
     renderMenu(c);
+    renderFaq(c.faq);
     renderGites(state.gites);
     $('#gites-block').hidden = !state.gites.length;
     // Encart « Dormir sur place »

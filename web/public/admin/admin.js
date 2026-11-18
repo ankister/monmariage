@@ -586,6 +586,13 @@
           <label class="field">Note sous le menu<input name="menu_note" value="${esc(c.menu_note)}"></label>
         </section>
 
+        <section class="panel">
+          <h2>Questions fréquentes (FAQ)</h2>
+          <p class="muted small">Une question sans réponse n’apparaît pas sur le site : vous pouvez la préparer et la compléter plus tard.</p>
+          <div id="faq-items"></div>
+          <button type="button" class="btn btn-ghost btn-small" id="add-faq">+ Ajouter une question</button>
+        </section>
+
         <section class="panel" id="umami-panel">
         <h2>Statistiques de visite (Umami)</h2>
         <p class="muted small">Renseignez votre instance <strong>Umami</strong> pour suivre les visites du site et de la page « Dormir sur place »
@@ -646,6 +653,35 @@
     });
     $('#add-course').addEventListener('click', () => { courses.insertAdjacentHTML('beforeend', courseBlock({ title: '', items: [] })); markDirty(); });
 
+    // Questions fréquentes
+    const faqBlock = (f) => `<div class="course faq-edit">
+      <div class="course-head"><input class="faq-q" placeholder="Question, ex. Puis-je venir avec des enfants ?" value="${esc(f.q)}" aria-label="Question">
+        <button type="button" class="icon-btn" data-up aria-label="Monter">↑</button>
+        <button type="button" class="icon-btn" data-down aria-label="Descendre">↓</button>
+        <button type="button" class="icon-btn" data-remove aria-label="Supprimer la question">✕</button></div>
+      <textarea class="faq-a" rows="3" placeholder="Réponse (la question reste masquée sur le site tant que la réponse est vide)" aria-label="Réponse">${esc(f.a)}</textarea>
+      ${f.a ? '' : '<small class="help faq-hidden">Masquée sur le site : pas encore de réponse.</small>'}</div>`;
+    const faqItems = $('#faq-items');
+    faqItems.innerHTML = (c.faq || []).map(faqBlock).join('');
+    faqItems.addEventListener('click', (e) => {
+      const block = e.target.closest('.faq-edit');
+      if (!block) return;
+      if (e.target.closest('[data-remove]')) block.remove();
+      if (e.target.closest('[data-up]') && block.previousElementSibling) block.previousElementSibling.before(block);
+      if (e.target.closest('[data-down]') && block.nextElementSibling) block.nextElementSibling.after(block);
+      markDirty();
+    });
+    faqItems.addEventListener('input', (e) => {
+      const block = e.target.closest('.faq-edit');
+      const hint = block && $('.faq-hidden', block);
+      if (hint) hint.hidden = !!$('.faq-a', block).value.trim();
+    });
+    $('#add-faq').addEventListener('click', () => {
+      faqItems.insertAdjacentHTML('beforeend', faqBlock({ q: '', a: '' }));
+      $('.faq-edit:last-child .faq-q', faqItems).focus();
+      markDirty();
+    });
+
     // Indicateur de modifications non enregistrées
     let dirty = false;
     function markDirty() { dirty = true; $('#dirty').textContent = 'Modifications non enregistrées'; }
@@ -667,8 +703,9 @@
           colors: $$('.color-row .hex', form).map((i) => i.value.trim()).filter((x) => /^#[0-9a-f]{6}$/i.test(x)),
         },
         menu_intro: v('menu_intro'), menu_note: v('menu_note'),
+        faq: $$('.faq-edit', form).map((b) => ({ q: $('.faq-q', b).value.trim(), a: $('.faq-a', b).value.trim() })),
         logo: { mode: form.querySelector('[name=logo_mode]:checked')?.value || 'ornament', height: v('logo_height'), html: v('logo_html') },
-        menu: $$('.course', form).map((b) => ({
+        menu: $$('#courses .course', form).map((b) => ({
           title: $('.course-title', b).value.trim(),
           items: $('.course-items', b).value.split('\n').map((s) => s.trim()).filter(Boolean),
         })),

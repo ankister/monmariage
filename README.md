@@ -59,6 +59,7 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
   option désactivable dans Contenu) et une **question anti-robot** (addition, vérifiée par le serveur, sans service tiers)
   doit être résolue
 - Programme : mairie, église, **séance photos**, réception ou autre lieu
+- **Questions fréquentes** (FAQ) en accordéon, entrée « FAQ » dans le menu ; masquée tant qu'aucune question n'a de réponse
 - **Page « Dormir sur place »** (`/dormir-sur-place/`) : plan interactif du gîte du Grand Breuil
   (rez-de-chaussée et étage, d'après le plan d'architecte), filtres, fiche de chaque chambre avec photos
   et tarifs, réservation avec prénom, nom, nombre de personnes et formule de nuits
@@ -281,6 +282,7 @@ location /api/admin/ {
 | Ajouter ma liste d'invités | **Invités → Coller une liste** (un nom par ligne, « Nom;2 » pour 2 adultes) |
 | Noter une réponse reçue par téléphone | **Invités → cliquer sur le nom → Réponse** |
 | Donner les chiffres au traiteur | **Accueil** (régimes) ou **Invités → Exporter (Excel)** |
+| Ajouter / modifier une question de la FAQ | **Contenu → Questions fréquentes** (une question sans réponse reste masquée) |
 | Changer le lien d'un gîte | **Gîtes → toucher le gîte → Lien** |
 | Changer la date, le menu, les couleurs | **Contenu → Enregistrer** |
 | Fermer les réponses après la date limite | **Contenu → Formulaire de réponse** |

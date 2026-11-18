@@ -311,6 +311,9 @@ router.put('/content', (req, res) => {
       items: (Array.isArray(s?.items) ? s.items : []).map((i) => str(i, 300)).filter(Boolean).slice(0, 30),
     })).filter((s) => s.title || s.items.length),
     menu_note: str(b.menu_note, 500),
+    faq: (Array.isArray(b.faq) ? b.faq : []).slice(0, 40)
+      .map((f) => ({ q: str(f?.q, 300), a: str(f?.a, 4000) }))
+      .filter((f) => f.q || f.a),
     options: { rsvp_open: !!b.options?.rsvp_open, rsvp_guest_list_only: !!b.options?.rsvp_guest_list_only },
     logo: {
       mode: oneOf(b.logo?.mode, ['ornament', 'image', 'html'], 'ornament'),

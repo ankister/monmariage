@@ -201,6 +201,11 @@ p { margin: 0 0 .75rem; }
 .course { border: 1px solid var(--line); border-radius: 12px; padding: .75rem; margin-bottom: .75rem; background: #fcfbf8; }
 .course-head { display: flex; gap: .4rem; margin-bottom: .5rem; }
 .course-head input { font-weight: 700; }
+/* FAQ : sur mobile, la question prend toute la largeur et les boutons passent en dessous */
+.faq-edit .course-head { flex-wrap: wrap; justify-content: flex-end; }
+.faq-edit .faq-q { flex: 1 1 100%; }
+.faq-edit textarea { margin-top: 0; }
+@media (min-width: 640px) { .faq-edit .course-head { flex-wrap: nowrap; } .faq-edit .faq-q { flex: 1 1 auto; } }
 
 .content-form .panel { margin-bottom: 1rem; }
 .savebar {
