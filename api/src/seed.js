@@ -42,6 +42,7 @@ function defaultContent() {
     options: {
       rsvp_open: true,
       rsvp_guest_list_only: true, // seuls les noms de la liste d'invités peuvent répondre
+      games: true,                // bouton « Jeux » dans le menu du site
     },
     // Logo affiché au-dessus de « Nous nous marions » : ornement par défaut, image envoyée ou code HTML/CSS
     logo: {

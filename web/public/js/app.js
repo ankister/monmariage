@@ -250,6 +250,7 @@
     renderTheme(c.theme);
     renderMenu(c);
     renderFaq(c.faq);
+    $('#nav-jeux').hidden = c.options.games === false;
     renderGites(state.gites);
     $('#gites-block').hidden = !state.gites.length;
     // Encart « Dormir sur place »

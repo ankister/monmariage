@@ -142,6 +142,19 @@ CREATE TABLE IF NOT EXISTS room_bookings (
 );
 CREATE INDEX IF NOT EXISTS idx_room_bookings_room ON room_bookings(room_id);
 
+-- Tableaux d'honneur des mini-jeux (/jeux/)
+CREATE TABLE IF NOT EXISTS game_scores (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  game       TEXT NOT NULL,                   -- retard | cavale
+  name       TEXT NOT NULL,
+  score      INTEGER NOT NULL,
+  won        INTEGER NOT NULL DEFAULT 0,      -- « Antoine est en retard » : arrivé à l'heure
+  level      INTEGER NOT NULL DEFAULT 0,      -- « Antoine en cavale » : niveau atteint
+  t          INTEGER NOT NULL,                -- horodatage (ms) utilisé par les jeux
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_game_scores ON game_scores(game, score DESC);
+
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
   created_at INTEGER NOT NULL,

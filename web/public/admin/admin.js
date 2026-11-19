@@ -593,6 +593,13 @@
           <button type="button" class="btn btn-ghost btn-small" id="add-faq">+ Ajouter une question</button>
         </section>
 
+        <section class="panel" id="games-panel">
+          <h2>Jeux</h2>
+          <label class="switch"><input type="checkbox" name="games_menu" ${c.options.games !== false ? 'checked' : ''}><span class="switch-ui" aria-hidden="true"></span><span>Afficher le bouton « Jeux » dans le menu du site</span></label>
+          <p class="muted small">Tableaux d’honneur partagés entre tous les invités. Les suppressions sont immédiates. <a href="/jeux/" target="_blank" rel="noopener">Ouvrir la page des jeux</a></p>
+          <div id="game-scores"></div>
+        </section>
+
         <section class="panel" id="umami-panel">
         <h2>Statistiques de visite (Umami)</h2>
         <p class="muted small">Renseignez votre instance <strong>Umami</strong> pour suivre les visites du site et de la page « Dormir sur place »
@@ -618,6 +625,7 @@
     const form = $('#content-form');
     setupLogoEditor(form, c);
     setupUmami(form);
+    loadGameScores();
     $('[data-goto-rooms]', form).addEventListener('click', (e) => { e.preventDefault(); go('rooms'); });
 
     // Couleurs
@@ -696,7 +704,7 @@
         couple: v('couple'), date: v('date'), rsvp_deadline: v('rsvp_deadline'), duration_hours: v('duration_hours'),
         timezone: v('timezone'), welcome: v('welcome'), contact_email: v('contact_email'), contact_phone: v('contact_phone'),
         nights: c.nights || [],
-        options: { rsvp_open: form.elements.rsvp_open.checked, rsvp_guest_list_only: form.elements.rsvp_guest_list_only.checked },
+        options: { rsvp_open: form.elements.rsvp_open.checked, rsvp_guest_list_only: form.elements.rsvp_guest_list_only.checked, games: form.elements.games_menu.checked },
         onsite: { open: form.elements.onsite_open.checked, venue: v('onsite_venue'), intro: v('onsite_intro'), note: v('onsite_note') },
         theme: {
           title: v('theme_title'), description: v('theme_description'), dress_code: v('theme_dress_code'),
@@ -788,6 +796,35 @@
   }
 
   /* ---------- Statistiques Umami ---------- */
+  /* ---------- Tableaux d'honneur des jeux ---------- */
+  const GAME_NAMES = { retard: 'Antoine est en retard', cavale: 'Antoine en cavale' };
+  async function loadGameScores() {
+    const box = $('#game-scores');
+    if (!box) return;
+    let data;
+    try { data = await call('/admin/games/scores'); } catch (err) { box.textContent = err.message; return; }
+    box.innerHTML = Object.entries(GAME_NAMES).map(([g, title]) => `
+      <div class="game-board">
+        <div class="pm-head"><h3>${esc(title)}</h3>
+          ${data[g].length ? `<button type="button" class="btn btn-ghost btn-small" data-reset="${g}">Tout effacer</button>` : ''}</div>
+        ${data[g].length ? `<ol class="game-scores">${data[g].map((s) => `<li>
+            <span><strong>${esc(s.name)}</strong> · ${s.score.toLocaleString('fr-FR')} pts
+            <small>${g === 'retard' ? (s.won ? 'à l’heure' : 'en retard') : `niveau ${s.level}`} · ${fmtDateTime(s.created_at)}</small></span>
+            <button type="button" class="icon-btn danger" data-del-score="${s.id}" aria-label="Supprimer le score de ${esc(s.name)}">🗑</button></li>`).join('')}</ol>`
+          : '<p class="muted small">Aucun score pour l’instant.</p>'}
+      </div>`).join('');
+    $$('[data-del-score]', box).forEach((b) => b.addEventListener('click', async () => {
+      if (!(await confirmBox('Supprimer ce score ?', 'Il disparaîtra du tableau d’honneur.'))) return;
+      try { await call(`/admin/games/scores/${b.dataset.delScore}`, { method: 'DELETE' }); toast('Score supprimé'); loadGameScores(); }
+      catch (err) { toast(err.message, 'error'); }
+    }));
+    $$('[data-reset]', box).forEach((b) => b.addEventListener('click', async () => {
+      if (!(await confirmBox(`Effacer tous les scores de « ${GAME_NAMES[b.dataset.reset]} » ?`, 'Pratique pour repartir de zéro après vos essais.'))) return;
+      try { await call(`/admin/games/${b.dataset.reset}/scores`, { method: 'DELETE' }); toast('Tableau d’honneur remis à zéro'); loadGameScores(); }
+      catch (err) { toast(err.message, 'error'); }
+    }));
+  }
+
   /* Réglages Umami : enregistrés avec le reste du contenu, ou via le bouton de test */
   const umamiBody = (form) => ({
     script_url: form.elements.umami_script_url.value.trim(),

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Les jeux du mariage</title>
+<link rel="stylesheet" href="/jeux/fonts.css">
+<style>
+/* VOICE: fête de mariage, invitation à jouer, chaleureux et espiègle
+   IDEA: la salle d'arcade de la noce, deux bornes dorées côte à côte
+   PICTURE: deux affiches de borne illustrées, une par jeu, qui s'ouvrent en grand
+   COLOUR and TYPE: prune profonde, or, rose poudré, ciel clair ; Great Vibes pour les titres, Fredoka pour le reste
+   LAYOUT: titre, deux bornes, lecteur pleine largeur quand on joue, tableaux d'honneur côte à côte */
+:root{color-scheme:dark;--bg:#2b0e22;--deep:#1c0816;--gold:#e0b354;--blush:#f3c6cf;--ink:#fbeff2;--soft:#dcb6c7}
+:root[data-theme=light],:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 50% -10%,#5c1b47 0,var(--bg) 62%) fixed,var(--bg);color:var(--ink);font:16px/1.55 Fredoka,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(18px,3.5vw,40px) max(5vw,14px)}
+.wrap{max-width:1080px;margin:0 auto}
+header{text-align:center;padding-bottom:6px}
+h1{font:400 clamp(44px,8vw,76px)/1.02 'Great Vibes',cursive;margin:0;color:var(--blush);text-wrap:balance}
+header p{margin:.4em auto 0;max-width:56ch;color:var(--soft);font-size:17px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:clamp(18px,3vw,32px)}
+.card{display:flex;flex-direction:column;background:linear-gradient(#4b1a3e,#33102a);border:2px solid var(--gold);border-radius:22px;padding:12px;box-shadow:0 22px 50px #0009,inset 0 0 0 6px #2b0e22}
+.card svg{display:block;width:100%;height:auto;border-radius:12px}
+.card .txt{padding:14px 8px 6px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card h2{font:400 clamp(32px,4vw,40px)/1.05 'Great Vibes',cursive;color:var(--blush);margin:0}
+.card p{margin:0;color:var(--soft)}
+.card .keys{font-size:14px}
+.card .go{margin-top:auto;padding-top:10px}
+button,.btn{font:600 16px Fredoka,system-ui,sans-serif;min-height:44px;padding:0 24px;border-radius:999px;border:2px solid var(--gold);background:var(--gold);color:#2b0e22;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+button:focus-visible{outline:3px solid var(--blush);outline-offset:3px}
+button.ghost{background:transparent;color:var(--gold)}
+.player[hidden],.boards[hidden]{display:none}
+.player .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.player h2{font:400 clamp(30px,4vw,42px)/1.05 'Great Vibes',cursive;color:var(--blush);margin:0}
+.player iframe{display:block;width:100%;height:900px;border:0;background:transparent}
+.boards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px 40px}
+.boards>h2{grid-column:1/-1;font:400 clamp(36px,5vw,50px)/1.05 'Great Vibes',cursive;color:var(--blush);margin:0}
+.board h3{font:600 19px/1.3 Fredoka,sans-serif;color:var(--gold);margin:0}
+.board .note{margin:0 0 10px;color:var(--soft);font-size:14px}
+.board ol{list-style:none;margin:0;padding:0;border-top:1px solid #e0b35455}
+.board li{display:grid;grid-template-columns:2.4em minmax(0,1fr) auto auto;gap:4px 12px;align-items:baseline;padding:9px 4px;border-bottom:1px solid #e0b35433}
+.board .rk{font-weight:700;color:var(--gold)}
+.board .nm{font-weight:600;overflow-wrap:anywhere}
+.board .st{font-size:13px;color:var(--soft);white-space:nowrap}
+.board .sc{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.board .empty{display:block;color:var(--soft);padding:12px 4px}
+footer{text-align:center;color:var(--soft);font-size:14px;padding-top:0}
+.retour-site{display:inline-flex;align-items:center;min-height:44px;padding:0 20px;margin-bottom:14px;border:2px solid var(--gold);border-radius:999px;color:var(--gold);font-weight:600;text-decoration:none}
+.retour-site:hover{background:var(--gold);color:#2b0e22}
+.retour-site:focus-visible{outline:3px solid var(--blush);outline-offset:3px}
+footer .retour-site{margin:14px 0 0}
+@media(max-width:600px){.card{padding:9px;border-radius:16px}.board li{grid-template-columns:2.2em minmax(0,1fr) auto}.board .st{display:none}}
+@media(prefers-reduced-motion:reduce){.bob{animation:none!important}}
+.bob{animation:bob 2.4s ease-in-out infinite;transform-box:fill-box}
+@keyframes bob{50%{transform:translateY(-8px)}}
+</style>
+</head>
+<body>
+<header class="band">
+  <a class="retour-site" href="/">← Retour au site du mariage</a>
+  <h1>Les jeux de Pauline &amp; Antoine</h1>
+  <p>Deux mini-jeux pour les invités. Choisis ton défi, inscris ton nom au tableau d'honneur et tente de battre les autres convives.</p>
+</header>
+
+<main>
+  <section class="band wrap" id="choix" style="padding-top:8px">
+    <div class="cards">
+      <article class="card">
+        <svg viewBox="0 0 400 230" role="img" aria-label="Antoine saute vers l'église où Pauline l'attend">
+          <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fcfee"/><stop offset=".75" stop-color="#d9eef7"/><stop offset="1" stop-color="#fde6ee"/></linearGradient></defs>
+          <rect width="400" height="230" fill="url(#sky)"/>
+          <circle cx="70" cy="48" r="26" fill="#fff6d6"/>
+          <path d="M0 175 Q60 140 130 165 T260 160 T400 150 V230 H0Z" fill="#b8dcb6"/>
+          <path d="M20 26 Q120 62 220 26" fill="none" stroke="#fff" stroke-width="2"/>
+          <g fill="#f3a6bd"><path d="M48 34l8 0-4 11z"/><path d="M108 44l8 0-4 11z"/><path d="M168 40l8 0-4 11z"/></g>
+          <g fill="#e0b354"><path d="M78 40l8 0-4 11z"/><path d="M138 45l8 0-4 11z"/><path d="M196 32l8 0-4 11z"/></g>
+          <rect x="262" y="104" width="82" height="88" fill="#efe7d9"/>
+          <path d="M256 106 L303 66 L350 106Z" fill="#efe7d9" stroke="#5b6b86" stroke-width="5" stroke-linejoin="round"/>
+          <rect x="342" y="58" width="40" height="134" fill="#e9e1d3"/>
+          <path d="M338 60 L362 22 L386 60Z" fill="#5b6b86"/>
+          <rect x="360" y="6" width="4" height="18" fill="#e0b354"/><rect x="354" y="11" width="16" height="4" fill="#e0b354"/>
+          <path d="M354 96 v-10 a8 8 0 0 1 16 0 v10z" fill="#4a3a4a"/><path d="M358 94 q4 -10 8 0z" fill="#e0b354"/>
+          <circle cx="303" cy="96" r="9" fill="#fff"/><circle cx="303" cy="96" r="4" fill="#f3a6bd"/>
+          <path d="M291 192 v-24 a12 12 0 0 1 24 0 v24z" fill="#7a3b2a"/>
+          <path d="M287 168 a16 16 0 0 1 32 0" fill="none" stroke="#f3a6bd" stroke-width="3"/>
+          <g transform="translate(330 168)"><path d="M-4 -8 h8 l10 24 h-28z" fill="#fff" stroke="#f3c6cf"/><circle cy="-13" r="6" fill="#f6d2b5"/><path d="M-6 -15 a6 6 0 0 1 12 0z" fill="#6b3b22"/><path d="M-3 -18 q-12 4 -10 26 l5 -4z" fill="#ffffffcc"/><circle cx="-8" cy="0" r="3" fill="#ff7aa2"/></g>
+          <rect y="192" width="400" height="38" fill="#d27a62"/><rect y="192" width="400" height="7" fill="#7cc06a"/>
+          <g stroke="#b4604b" stroke-width="1.5"><path d="M0 212 H400"/><path d="M20 199v13M60 199v13M100 199v13M140 199v13M180 199v13M220 199v13M260 199v13M300 199v13M340 199v13M380 199v13M40 212v18M80 212v18M120 212v18M160 212v18M200 212v18M240 212v18M280 212v18M320 212v18M360 212v18"/></g>
+          <g><rect x="150" y="110" width="26" height="24" rx="3" fill="#fffaf6" stroke="#e7c9cf"/><rect x="160" y="110" width="6" height="24" fill="#ff7aa2"/><rect x="150" y="119" width="26" height="6" fill="#ff7aa2"/></g>
+          <g class="bob" fill="none" stroke="#e0b354" stroke-width="3"><circle cx="212" cy="94" r="7"/></g>
+          <g transform="translate(100 150)"><g class="bob"><g transform="rotate(-8)">
+            <rect x="-11" y="-4" width="22" height="20" rx="5" fill="#1f1c2c"/><path d="M-4 -4 h8 l-4 11z" fill="#fff"/>
+            <path d="M-8 16 l-6 10 M6 16 l8 9" stroke="#14121c" stroke-width="5" stroke-linecap="round"/>
+            <circle cy="-12" r="8" fill="#f3c9a3"/><rect x="-9" y="-21" width="18" height="3" fill="#111"/><rect x="-6" y="-33" width="12" height="13" fill="#111"/><rect x="-6" y="-23" width="12" height="2.5" fill="#c2185b"/>
+            <circle cx="4" cy="-12" r="1.6" fill="#1c0816"/></g></g></g>
+        </svg>
+        <div class="txt">
+          <h2>Antoine est en retard</h2>
+          <p>Un jeu de plateforme : 200 secondes pour traverser la ville en sautant et rejoindre Pauline devant l'église.</p>
+          <p class="keys">Flèches ou Q/D, Espace pour sauter, Maj pour courir. Boutons tactiles sur téléphone.</p>
+          <div class="go"><button data-jeu="retard">Jouer</button></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <svg viewBox="0 0 400 230" role="img" aria-label="Antoine fuit Pauline dans un labyrinthe de dragées">
+          <rect width="400" height="230" fill="#1c0816"/>
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <g stroke="#e0b354" stroke-width="18"><path d="M20 20 H380 V210 H20Z"/><path d="M80 70 H150 M250 70 H320 M200 20 V80 M80 160 H140 M260 160 H320 M200 130 V210 M110 115 H170 M230 115 H290"/></g>
+            <g stroke="#5a1a45" stroke-width="10"><path d="M20 20 H380 V210 H20Z"/><path d="M80 70 H150 M250 70 H320 M200 20 V80 M80 160 H140 M260 160 H320 M200 130 V210 M110 115 H170 M230 115 H290"/></g>
+          </g>
+          <g fill="#ffd3e2"><ellipse cx="60" cy="45" rx="4.5" ry="3.4"/><ellipse cx="120" cy="45" rx="4.5" ry="3.4"/><ellipse cx="180" cy="45" rx="4.5" ry="3.4"/><ellipse cx="240" cy="45" rx="4.5" ry="3.4"/><ellipse cx="300" cy="45" rx="4.5" ry="3.4"/><ellipse cx="350" cy="90" rx="4.5" ry="3.4"/><ellipse cx="350" cy="140" rx="4.5" ry="3.4"/><ellipse cx="320" cy="187" rx="4.5" ry="3.4"/><ellipse cx="260" cy="187" rx="4.5" ry="3.4"/></g>
+          <g fill="#cfe6ff"><ellipse cx="90" cy="45" rx="4.5" ry="3.4"/><ellipse cx="150" cy="45" rx="4.5" ry="3.4"/><ellipse cx="270" cy="45" rx="4.5" ry="3.4"/><ellipse cx="50" cy="92" rx="4.5" ry="3.4"/><ellipse cx="50" cy="138" rx="4.5" ry="3.4"/><ellipse cx="80" cy="187" rx="4.5" ry="3.4"/><ellipse cx="140" cy="187" rx="4.5" ry="3.4"/><ellipse cx="230" cy="187" rx="4.5" ry="3.4"/></g>
+          <g transform="translate(350 45)"><rect x="-11" y="-2" width="22" height="9" rx="2" fill="#fff6f0"/><rect x="-7" y="-9" width="14" height="8" rx="2" fill="#ffd1de"/><rect x="-1" y="-14" width="2" height="5" fill="#fff"/><circle cy="-15" r="1.6" fill="#ffcf4a"/></g>
+          <g transform="translate(110 138)"><g class="bob">
+            <rect x="-11" y="-4" width="22" height="20" rx="5" fill="#1f1c2c" stroke="#e0b35466"/><path d="M-4 -4 h8 l-4 11z" fill="#fff"/>
+            <circle cy="-12" r="8" fill="#f3c9a3"/><rect x="-9" y="-21" width="18" height="3" fill="#111"/><rect x="-6" y="-33" width="12" height="13" fill="#111"/><rect x="-6" y="-23" width="12" height="2.5" fill="#c2185b"/>
+            <circle cx="-3" cy="-12" r="1.6" fill="#1c0816"/><path d="M8 -20 q4 6 0 7 q-4 -1 0 -7z" fill="#9fd4ff"/>
+          </g></g>
+          <g transform="translate(255 138)">
+            <path d="M-4 -6 h8 l13 26 h-34z" fill="#fff" stroke="#f3c6cf"/><circle cy="-13" r="7" fill="#f6d2b5"/><path d="M-7 -15 a7 7 0 0 1 14 0z" fill="#6b3b22"/>
+            <path d="M3 -18 q14 4 12 28 l-6 -4z" fill="#ffffffcc"/><path d="M-4 -21 l2 -4 2 3 2 -3 2 4z" fill="#e0b354"/><circle cx="-11" cy="2" r="3.5" fill="#ff7aa2"/>
+            <circle cx="-3" cy="-13" r="1.6" fill="#2a0f1f"/>
+          </g>
+        </svg>
+        <div class="txt">
+          <h2>Antoine en cavale</h2>
+          <p>Un jeu de labyrinthe : Antoine ramasse les dragées en fuyant Pauline. Le gâteau la distrait quelques secondes.</p>
+          <p class="keys">Flèches, ZQSD ou WASD. Glisse le doigt ou utilise les flèches tactiles sur téléphone.</p>
+          <div class="go"><button data-jeu="cavale">Jouer</button></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="band wrap player" id="lecteur" hidden>
+    <div class="bar">
+      <h2 id="lecteurTitre">Antoine est en retard</h2>
+      <button class="ghost" id="retour">← Retour aux jeux</button>
+    </div>
+    <iframe id="frame" title="Jeu" allow="autoplay; fullscreen"></iframe>
+  </section>
+
+  <section class="band wrap boards" id="classements" aria-live="polite">
+    <h2>Tableaux d'honneur</h2>
+    <div class="board"><h3>Antoine est en retard</h3><p class="note" id="note-retard"></p><ol id="list-retard"></ol></div>
+    <div class="board"><h3>Antoine en cavale</h3><p class="note" id="note-cavale"></p><ol id="list-cavale"></ol></div>
+  </section>
+</main>
+<footer class="band">Des jeux faits maison pour le mariage de Pauline et Antoine.<br><a class="retour-site" href="/">← Retour au site du mariage</a></footer>
+
+<script src="jeux.js"></script>
+</body>
+</html>

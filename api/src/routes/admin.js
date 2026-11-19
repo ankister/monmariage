@@ -7,6 +7,7 @@ const express = require('express');
 const { db, getContent, setContent, getPrivate, setPrivate, gitesWithAvailability } = require('../db');
 const roomRoutes = require('./rooms');
 const siteRoutes = require('./site');
+const gameRoutes = require('./games');
 const auth = require('../auth');
 const { HttpError, str, int, num, oneOf, email, url, nameKey, rateLimit, toCsv, isValidTimezone } = require('../util');
 
@@ -314,7 +315,7 @@ router.put('/content', (req, res) => {
     faq: (Array.isArray(b.faq) ? b.faq : []).slice(0, 40)
       .map((f) => ({ q: str(f?.q, 300), a: str(f?.a, 4000) }))
       .filter((f) => f.q || f.a),
-    options: { rsvp_open: !!b.options?.rsvp_open, rsvp_guest_list_only: !!b.options?.rsvp_guest_list_only },
+    options: { rsvp_open: !!b.options?.rsvp_open, rsvp_guest_list_only: !!b.options?.rsvp_guest_list_only, games: !!b.options?.games },
     logo: {
       mode: oneOf(b.logo?.mode, ['ornament', 'image', 'html'], 'ornament'),
       image: cur.logo.image, // l'image se change via /admin/logo
@@ -354,5 +355,6 @@ router.put('/security/password', rateLimit('pwd', 10, 15 * 60_000), (req, res) =
 /* ---------- Chambres sur place (voir routes/rooms.js) ---------- */
 router.use(roomRoutes.adminRouter);
 router.use(siteRoutes.adminRouter);
+router.use(gameRoutes.adminRouter);
 
 module.exports = router;

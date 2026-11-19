@@ -275,6 +275,13 @@ textarea.code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
 .umami-status { margin: .75rem 0 0; font-weight: 700; }
 code { background: #f1ece3; padding: .05rem .3rem; border-radius: 4px; font-size: .85em; }
 
+/* Jeux : tableaux d'honneur */
+.game-board { margin-top: 1rem; }
+.game-scores { list-style: none; margin: .5rem 0 0; padding: 0; max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
+.game-scores li { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .45rem .6rem; border-bottom: 1px solid var(--line); }
+.game-scores li:last-child { border-bottom: 0; }
+.game-scores small { display: block; color: var(--muted); }
+
 /* Tableau de bord : repas */
 .meal-count { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; font-size: 1rem; }
 .meal-count strong { font-family: var(--serif); font-size: 1.6rem; }

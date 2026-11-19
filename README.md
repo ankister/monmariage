@@ -59,6 +59,8 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
   option désactivable dans Contenu) et une **question anti-robot** (addition, vérifiée par le serveur, sans service tiers)
   doit être résolue
 - Programme : mairie, église, **séance photos**, réception ou autre lieu
+- **Jeux** (`/jeux/`) : « Antoine est en retard » et « Antoine en cavale », avec **tableaux d'honneur partagés** entre tous les invités
+  (enregistrés par le serveur), bouton « Jeux » dans le menu et bouton de retour vers le site
 - **Questions fréquentes** (FAQ) en accordéon, entrée « FAQ » dans le menu ; masquée tant qu'aucune question n'a de réponse
 - **Page « Dormir sur place »** (`/dormir-sur-place/`) : plan interactif du gîte du Grand Breuil
   (rez-de-chaussée et étage, d'après le plan d'architecte), filtres, fiche de chaque chambre avec photos
@@ -113,6 +115,8 @@ monmariage/
 │       └── routes/
 │           ├── public.js       # contenu, RSVP, réservations, agenda .ics
 │           ├── rooms.js        # chambres sur place : réservations, prix, photos
+│           ├── games.js        # tableaux d'honneur des jeux
+│           ├── site.js         # logo et statistiques Umami
 │           └── admin.js        # toutes les routes d'administration
 └── web/                        # front statique + Nginx
     ├── Dockerfile
@@ -128,6 +132,7 @@ monmariage/
         ├── js/onsite.js        # page « Dormir sur place »
         ├── css/plan.css, css/onsite.css
         ├── dormir-sur-place/index.html
+        ├── jeux/                # page des jeux + retard/ et cavale/ (un dossier par jeu)
         ├── admin/index.html, admin.css, admin.js   # administration
         ├── admin/admin-rooms.js                    # onglet Chambres
         ├── favicon.svg
@@ -283,6 +288,8 @@ location /api/admin/ {
 | Noter une réponse reçue par téléphone | **Invités → cliquer sur le nom → Réponse** |
 | Donner les chiffres au traiteur | **Accueil** (régimes) ou **Invités → Exporter (Excel)** |
 | Ajouter / modifier une question de la FAQ | **Contenu → Questions fréquentes** (une question sans réponse reste masquée) |
+| Effacer les scores de test des jeux | **Contenu → Jeux → Tout effacer** (ou 🗑 pour un score) |
+| Masquer le bouton « Jeux » | **Contenu → Jeux → décocher l'option** |
 | Changer le lien d'un gîte | **Gîtes → toucher le gîte → Lien** |
 | Changer la date, le menu, les couleurs | **Contenu → Enregistrer** |
 | Fermer les réponses après la date limite | **Contenu → Formulaire de réponse** |

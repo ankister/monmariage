@@ -11,6 +11,7 @@ const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
 const roomRoutes = require('./routes/rooms');
 const siteRoutes = require('./routes/site');
+const gameRoutes = require('./routes/games');
 const { HttpError } = require('./util');
 
 auth.initAdminPassword();
@@ -51,6 +52,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api', publicRoutes);
 app.use('/api', roomRoutes.publicRouter);
 app.use('/api', siteRoutes.publicRouter);
+app.use('/api', gameRoutes.publicRouter);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Ressource introuvable.' }));
 
 // Gestion centralisée des erreurs (Express 5 transmet aussi les erreurs des fonctions async)
