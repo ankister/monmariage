@@ -49,7 +49,7 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
 
 ### Fonctionnalités
 
-**Côté invités** (`https://paulineetantoine.fr`)
+**Côté invités** (`https://votre-domaine.fr`)
 - Compte à rebours en direct, date en toutes lettres, bouton « Ajouter à mon agenda » (.ics avec rappel J-7)
 - Programme (frise horaire) + carte OpenStreetMap des lieux (mairie, église, salle…) avec liens d'itinéraire
 - Thème : description, code vestimentaire, pastilles de couleurs ; **les couleurs du thème colorent le site**
@@ -60,17 +60,17 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
   option désactivable dans Contenu) et une **question anti-robot** (addition, vérifiée par le serveur, sans service tiers)
   doit être résolue
 - Programme : mairie, église, **séance photos**, réception ou autre lieu
-- **Jeux** (`/jeux/`) : « Antoine est en retard » et « Antoine en cavale », avec **tableaux d'honneur partagés** entre tous les invités
+- **Jeux** (`/jeux/`) : « … est en retard » et « … en cavale » (prénoms du marié et de la mariée réglés dans `.env` : `PRENOM_MARIE`, `PRENOM_MARIEE`), avec **tableaux d'honneur partagés** entre tous les invités
   (enregistrés par le serveur), bouton « Jeux » dans le menu et bouton de retour vers le site
 - **Questions fréquentes** (FAQ) en accordéon, entrée « FAQ » dans le menu ; masquée tant qu'aucune question n'a de réponse
-- **Page « Dormir sur place »** (`/dormir-sur-place/`) : plan interactif du gîte du Grand Breuil
+- **Page « Dormir sur place »** (`/dormir-sur-place/`) : plan interactif du lieu de réception
   (rez-de-chaussée et étage, d'après le plan d'architecte), filtres, fiche de chaque chambre avec photos
   et tarifs, réservation avec prénom, nom, nombre de personnes et formule de nuits
   (vendredi + samedi, ou samedi seul). Une chambre réservée disparaît des chambres disponibles.
 - Anti-spam : question anti-robot, liste d'invités, champ piège invisible, limitation de débit, code d'invitation optionnel
 - `noindex` : le site n'est pas référencé par les moteurs de recherche
 
-**Côté administration** (`https://paulineetantoine.fr/admin/`)
+**Côté administration** (`https://votre-domaine.fr/admin/`)
 - Tableau de bord : personnes attendues, foyers présents / absents / sans réponse, taux de réponse,
   chambres sur place, nombre de menus classiques / végétariens, allergies
 - Invités : recherche, filtres, ajout / modification / suppression, **collage d'une liste depuis Excel**,
@@ -113,7 +113,7 @@ monmariage/
 │       ├── server.js           # point d'entrée, protection CSRF, erreurs
 │       ├── db.js               # schéma SQLite, données d'exemple
 │       ├── seed.js             # contenu d'exemple du premier démarrage
-│       ├── rooms-seed.js       # les 21 chambres du Grand Breuil (d'après le plan)
+│       ├── rooms-seed.js       # les 21 chambres du lieu de réception (d'après le plan)
 │       ├── auth.js             # mot de passe (scrypt) et sessions
 │       ├── util.js             # validation, CSV, fuseaux horaires, anti-spam
 │       └── routes/
@@ -148,7 +148,7 @@ monmariage/
 ## 3. Déploiement pas à pas
 
 Prérequis : un serveur avec Docker et Docker Compose v2 (Unraid avec Compose Manager, Debian…),
-Nginx Proxy Manager déjà en place, le domaine `paulineetantoine.fr` chez OVH.
+Nginx Proxy Manager déjà en place, le domaine `votre-domaine.fr` chez OVH.
 
 ### 3.1 Récupérer le code
 
@@ -261,12 +261,12 @@ seulement s'il y a du nouveau. Journal : `/mnt/user/appdata/monmariage/mise-a-jo
 
 ### 4.1 DNS chez OVH
 
-Dans la zone DNS de `paulineetantoine.fr` :
+Dans la zone DNS de `votre-domaine.fr` :
 
 | Type | Sous-domaine | Cible |
 |---|---|---|
 | A | *(vide)* | votre IP publique |
-| CNAME | `www` | `paulineetantoine.fr.` |
+| CNAME | `www` | `votre-domaine.fr.` |
 
 Supprimez les enregistrements A/AAAA par défaut d'OVH qui pointeraient ailleurs.
 Les ports 80 et 443 de la box doivent être redirigés vers NPM (normalement déjà fait).
@@ -276,9 +276,9 @@ Les ports 80 et 443 de la box doivent être redirigés vers NPM (normalement dé
 **Hosts → Proxy Hosts → Add Proxy Host**
 
 Onglet **Details**
-- Domain Names : `paulineetantoine.fr` et `www.paulineetantoine.fr`
+- Domain Names : `votre-domaine.fr` et `www.votre-domaine.fr`
 - Scheme : `http`
-- Forward Hostname / IP : IP du serveur qui fait tourner le site (ex. `192.168.1.55`)
+- Forward Hostname / IP : IP du serveur qui fait tourner le site (ex. `<IP_DU_SERVEUR>`)
   — ou `monmariage-web` si NPM est sur le même réseau Docker que le site
 - Forward Port : `8095` (valeur de `WEB_PORT`) — ou `80` si vous utilisez le nom du conteneur
 - ☑ Block Common Exploits
@@ -297,12 +297,12 @@ Facultatif — réserver l'admin au réseau local (ajouter dans **Advanced**) :
 
 ```nginx
 location /admin/ {
-    allow 192.168.1.0/24;
+    allow <RESEAU_LOCAL>;   # votre réseau local, au format adresse/masque
     deny all;
     include conf.d/include/proxy.conf;
 }
 location /api/admin/ {
-    allow 192.168.1.0/24;
+    allow <RESEAU_LOCAL>;   # votre réseau local, au format adresse/masque
     deny all;
     include conf.d/include/proxy.conf;
 }
@@ -312,8 +312,8 @@ location /api/admin/ {
 
 ### 4.3 Vérification
 
-- `https://paulineetantoine.fr` affiche le site, cadenas valide
-- `https://paulineetantoine.fr/admin/` affiche la connexion
+- `https://votre-domaine.fr` affiche le site, cadenas valide
+- `https://votre-domaine.fr/admin/` affiche la connexion
 - Envoyez une réponse test depuis le site, vérifiez qu'elle apparaît dans l'admin, puis supprimez-la
 
 ---
@@ -360,7 +360,7 @@ la politique de sécurité du site reste stricte, l'adresse de votre Umami n'est
 et le suivi n'est pas bloqué par les bloqueurs de publicité courants. L'administration n'est jamais suivie.
 
 > Comme c'est le serveur du site qui contacte Umami, vous pouvez indiquer une **adresse du réseau local**
-> (ex. `http://192.168.1.55:3001/script.js`) si l'adresse publique ne fonctionne pas depuis Docker
+> (ex. `http://<IP_DU_SERVEUR>:3001/script.js`) si l'adresse publique ne fonctionne pas depuis Docker
 > (problème de « hairpin NAT »). « Tester la connexion » vous le dira.
 
 ## 6. Sauvegardes

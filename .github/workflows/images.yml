@@ -26,7 +26,8 @@ jobs:
           # Termes interdits (ce fichier reste dans le dépôt privé, il n'est pas copié dans les images)
           TERMES='pauline|antoine|bretzel|cassoulet|bourges|breuil|villecelin|ravauderie|celle-cond|paulineetantoine|192\.168\.'
           if grep -rniE "$TERMES" api/src api/scripts api/package.json api/Dockerfile api/docker-entrypoint.sh \
-               web/public web/templates web/scripts web/Dockerfile web/package.json --exclude-dir=vendor; then
+               web/public web/templates web/scripts web/Dockerfile web/package.json \
+               README.md .env.example docker-compose.yml deploy --exclude-dir=vendor; then
             echo "::error::Donnée personnelle trouvée ci-dessus : publication des images annulée."
             exit 1
           fi
