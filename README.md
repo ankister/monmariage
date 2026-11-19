@@ -11,6 +11,7 @@ Tout tourne chez vous, en deux conteneurs Docker, sans service tiers (hors tuile
 1. [Architecture et choix techniques](#1-architecture-et-choix-techniques)
 2. [Arborescence](#2-arborescence)
 3. [Déploiement pas à pas](#3-déploiement-pas-à-pas)
+   - [Installation sur Bretzel avec mises à jour automatiques](#3-bis-installation-sur-bretzel-unraid-avec-mises-à-jour-automatiques)
 4. [Configuration de Nginx Proxy Manager](#4-configuration-de-nginx-proxy-manager)
 5. [Utilisation de l'administration](#5-utilisation-de-ladministration)
 6. [Sauvegardes](#6-sauvegardes)
@@ -99,6 +100,7 @@ monmariage/
 ├── .env.example                # modèle de configuration (à copier en .env)
 ├── .gitignore
 ├── README.md
+├── deploy/mise-a-jour.sh     # mise à jour automatique sur Bretzel (plugin User Scripts)
 ├── api/                        # backend Node.js
 │   ├── Dockerfile
 │   ├── package.json / package-lock.json
@@ -211,6 +213,108 @@ Créez une nouvelle pile, choisissez comme dossier `/mnt/user/appdata/monmariage
 depuis le terminal Unraid, dans ce même dossier.
 
 ---
+
+## 3 bis. Installation sur Bretzel (Unraid) avec mises à jour automatiques
+
+Le code est récupéré depuis le dépôt privé GitHub grâce à une **clé de déploiement en lecture seule**,
+puis un script vérifie GitHub toutes les 10 minutes et reconstruit le site quand il y a une nouvelle version.
+Toutes les commandes se tapent dans le **terminal d'Unraid** (icône `>_` en haut à droite de l'interface).
+
+### Étape 1 — Créer la clé de déploiement (sur Bretzel)
+
+```bash
+mkdir -p /mnt/user/appdata/monmariage-deploy
+cd /mnt/user/appdata/monmariage-deploy
+ssh-keygen -t ed25519 -N "" -C "bretzel-monmariage" -f id_ed25519
+cat id_ed25519.pub
+```
+
+Copiez la ligne affichée (elle commence par `ssh-ed25519`). La clé privée ne quitte jamais Bretzel.
+
+### Étape 2 — Autoriser la clé sur GitHub
+
+<https://github.com/ankister/monmariage/settings/keys/new> → **Title** : `Bretzel` → **Key** : collez la ligne →
+laissez **« Allow write access » décoché** → **Add key**.
+
+### Étape 3 — Récupérer le site
+
+```bash
+cd /mnt/user/appdata/monmariage-deploy
+export GIT_SSH_COMMAND="ssh -i $PWD/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=$PWD/known_hosts -o StrictHostKeyChecking=accept-new"
+if command -v git >/dev/null; then
+  git clone git@github.com:ankister/monmariage.git /mnt/user/appdata/monmariage
+else
+  # Unraid sans git : on passe par un petit conteneur
+  docker run --rm -v /mnt/user/appdata:/mnt/user/appdata -v "$PWD:$PWD" -e GIT_SSH_COMMAND -e HOME=/tmp \
+    alpine/git clone git@github.com:ankister/monmariage.git /mnt/user/appdata/monmariage
+fi
+ls /mnt/user/appdata/monmariage   # doit afficher README.md, api, deploy, docker-compose.yml, web
+```
+
+### Étape 4 — Configurer
+
+```bash
+cd /mnt/user/appdata/monmariage
+cp .env.example .env
+nano .env        # Ctrl+O puis Entrée pour enregistrer, Ctrl+X pour quitter
+```
+
+Valeurs pour Bretzel :
+
+```ini
+WEB_PORT=8095
+PUID=99
+PGID=100
+DATA_PATH=/mnt/user/appdata/monmariage/data
+```
+
+> **Base SQLite et couche FUSE d'Unraid** : comme pour Plex, une base SQLite sur `/mnt/user/…` peut souffrir
+> de la couche `shfs`. Si le partage `appdata` est sur un pool de cache, préférez le chemin direct du pool,
+> par exemple `DATA_PATH=/mnt/<nom_du_pool>/appdata/monmariage/data` (`ls /mnt` affiche le nom des pools).
+
+```bash
+mkdir -p /mnt/user/appdata/monmariage/data          # ou le chemin choisi pour DATA_PATH
+chown -R 99:100 /mnt/user/appdata/monmariage/data
+```
+
+### Étape 5 — Mot de passe admin et démarrage
+
+```bash
+cd /mnt/user/appdata/monmariage
+docker compose build
+docker compose run --rm api node scripts/hash-password.js   # tapez le mot de passe, copiez la ligne ADMIN_PASSWORD_HASH='…'
+nano .env                                                    # collez-la à la place de « ADMIN_PASSWORD_HASH= »
+docker compose up -d
+docker compose ps                                            # les deux conteneurs doivent être « healthy »
+```
+
+Test : `http://192.168.1.55:8095` puis `http://192.168.1.55:8095/admin/`.
+Ensuite, configurez Nginx Proxy Manager (section 4) avec **Forward Hostname/IP** `192.168.1.55` et **Forward Port** `8095`.
+
+### Étape 6 — Mises à jour automatiques
+
+1. **Apps** → installez le plugin **User Scripts** (s'il ne l'est pas déjà).
+2. **Settings → User Scripts → Add New Script** → nom : `monmariage-mise-a-jour`.
+3. Survolez l'engrenage du script → **Edit Script**, remplacez tout le contenu par :
+
+   ```bash
+   #!/bin/bash
+   bash /mnt/user/appdata/monmariage/deploy/mise-a-jour.sh
+   ```
+
+4. **Save Changes**, puis dans la liste déroulante du planning choisissez **Custom** et indiquez `*/10 * * * *`
+   (toutes les 10 minutes) → **Apply**.
+5. Cliquez sur **Run Script** une première fois : le message doit être « Site déjà à jour ».
+
+À chaque nouvelle version envoyée sur GitHub, le site est reconstruit dans les 10 minutes.
+Le journal se trouve dans `/mnt/user/appdata/monmariage-deploy/mise-a-jour.log`.
+
+- Forcer une reconstruction immédiate : `FORCE=1 bash /mnt/user/appdata/monmariage/deploy/mise-a-jour.sh`
+- Revenir à une version précédente : `cd /mnt/user/appdata/monmariage && git log --oneline` puis
+  `git reset --hard <code>` et `docker compose up -d --build` (désactivez le script entre-temps, sinon il revient à la dernière version)
+
+> Ne modifiez pas les fichiers du site directement sur Bretzel : le script les remplace par la version GitHub.
+> Seuls `.env` et le dossier de données vous appartiennent sur le serveur.
 
 ## 4. Configuration de Nginx Proxy Manager
 

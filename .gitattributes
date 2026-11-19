@@ -1,0 +1,2 @@
+# Scripts shell toujours en fins de ligne Unix (sinon ils échouent sur Unraid s’ils sont édités sous Windows)
+*.sh text eol=lf
