@@ -11,9 +11,10 @@ services:
     pull_policy: build
     container_name: monmariage-api
     restart: unless-stopped
-    # Propriétaire des fichiers de la base (Unraid : PUID=99 / PGID=100)
-    user: "${PUID:-1000}:${PGID:-1000}"
     environment:
+      # Propriétaire des fichiers de la base (Unraid : PUID=99 / PGID=100), réglé automatiquement au démarrage
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       INVITE_CODE: ${INVITE_CODE:-}
@@ -33,6 +34,10 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    environment:
+      # Prénoms affichés dans les jeux (les images n'en contiennent aucun)
+      PRENOM_MARIE: ${PRENOM_MARIE:-Hugo}
+      PRENOM_MARIEE: ${PRENOM_MARIEE:-Léa}
     ports:
       - "${WEB_PORT:-8095}:80"
     networks:

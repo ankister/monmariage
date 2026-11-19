@@ -134,7 +134,7 @@ function winUpdate(dt){
   if(Math.random()<dt*8)parts.push({k:'heart',x:DOOR+Math.random()*2-.5,y:11,vy:-2-Math.random()*2,vx:(Math.random()-.5),t:1.6});
   if(timeLeft>0){const d=Math.min(timeLeft,dt*60);timeLeft-=d;score+=d*10;if(Math.random()<.5)tone(880,.03,'triangle',.03)}
   hud();
-  if(timeLeft<=0&&stT>3.5&&!winShown){winShown=true;won=true;endRun('Vous pouvez embrasser la mariée !',`Antoine a rejoint Pauline à l'église à temps. Score final : ${Math.floor(score)}.`)}
+  if(timeLeft<=0&&stT>3.5&&!winShown){winShown=true;won=true;endRun('Vous pouvez embrasser la mariée !',`__PRENOM_MARIE__ a rejoint __PRENOM_MARIEE__ à l'église à temps. Score final : ${Math.floor(score)}.`)}
 }
 
 /* ---------- dessin ---------- */
@@ -295,10 +295,10 @@ function draw(){
   for(const it of items)drawFlower(it.x,it.y);
   for(const e of enemies)if(e.alive&&e.active)(e.type==='cork'?drawCork:drawBird)(e);
   drawBride(DOOR+1.6,13-.49);
-  if(DOOR+1.6>camX-1&&DOOR+1.6<camX+viewW+1)label('Pauline',DOOR+1.6,10.55,.42,'#ffffff');
+  if(DOOR+1.6>camX-1&&DOOR+1.6<camX+viewW+1)label('__PRENOM_MARIEE__',DOOR+1.6,10.55,.42,'#ffffff');
   const blink=P.inv>0&&((clock*14)|0)%2;
   if(!blink&&state!=='title')drawGroom(P.x+P.w/2,P.y+P.h-.49,P.face,P.walk,!P.on&&state!=='win',P.shield);
-  if((nameT>0&&state==='play')||state==='title'||state==='win')label('Antoine',P.x+P.w/2,P.y-.45,.42,'#ffffff');
+  if((nameT>0&&state==='play')||state==='title'||state==='win')label('__PRENOM_MARIE__',P.x+P.w/2,P.y-.45,.42,'#ffffff');
   for(const p of parts){if(p.k==='ring')drawRing(p.x,p.y,1.1);else heart(p.x,p.y,.7,'#ff7aa2')}
   ctx.restore();
   for(const p of popups)label(p.txt,p.x,p.y-(1-p.t)*1.2,.5,'#ffd36b');
@@ -325,10 +325,10 @@ function startGame(){
   if(ac&&ac.state==='suspended')ac.resume();
   buildLevel();score=0;ringCount=0;lives=3;cp=2;cpOn=false;won=false;saved=false;parts=[];popups=[];respawn();camX=0;$('ov').hidden=true;$('saveForm').hidden=true;
 }
-function gameOver(){state='over';won=false;endRun('Mariage reporté…',`Antoine n'est pas arrivé à l'église. Score : ${Math.floor(score)}. Pauline lui accorde une seconde chance.`)}
+function gameOver(){state='over';won=false;endRun('Mariage reporté…',`__PRENOM_MARIE__ n'est pas arrivé à l'église. Score : ${Math.floor(score)}. __PRENOM_MARIEE__ lui accorde une seconde chance.`)}
 function togglePause(){
   if(state==='paused'){state=prev;$('ov').hidden=true;$('pause').textContent='Pause'}
-  else if(state==='play'||state==='dying'||(state==='win'&&!winShown)){prev=state;state='paused';$('pause').textContent='Reprendre';showOv('Pause','Le temps pour Antoine de renouer sa cravate.','Reprendre')}
+  else if(state==='play'||state==='dying'||(state==='win'&&!winShown)){prev=state;state='paused';$('pause').textContent='Reprendre';showOv('Pause','Le temps pour __PRENOM_MARIE__ de renouer sa cravate.','Reprendre')}
 }
 function tone(f,d,type,v,when){
   if(!ac||muted)return;const t=ac.currentTime+(when||0),o=ac.createOscillator(),g=ac.createGain();
@@ -360,7 +360,7 @@ for(const b of document.querySelectorAll('.pad button')){
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state!=='paused')togglePause()});
 
 /* ---------- tableau d'honneur ---------- */
-const API='api/scores',LS_SCORES='antoine-retard-scores',LS_NAME='antoine-retard-pseudo';
+const API='api/scores',LS_SCORES='jeu-retard-scores',LS_NAME='jeu-retard-pseudo';
 let board=[],online=false,lastEntry=null;
 function readPseudo(){try{return localStorage.getItem(LS_NAME)||''}catch(e){return''}}
 function readLocal(){try{const a=JSON.parse(localStorage.getItem(LS_SCORES)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
@@ -374,7 +374,7 @@ async function loadBoard(){
 function renderBoard(){
   $('boardNote').textContent=online?'Classement partagé entre tous les invités.':'Scores enregistrés sur cet appareil.';
   const ol=$('boardList');ol.textContent='';
-  if(!board.length){const li=document.createElement('li');li.className='empty';li.textContent="Aucun score pour l'instant. À toi d'aider Antoine !";ol.append(li);return}
+  if(!board.length){const li=document.createElement('li');li.className='empty';li.textContent="Aucun score pour l'instant. À toi d'aider __PRENOM_MARIE__ !";ol.append(li);return}
   board.slice(0,10).forEach((e,i)=>{
     const li=document.createElement('li');if(lastEntry&&e.t===lastEntry.t&&e.name===lastEntry.name)li.className='me';
     const c=(cls,txt)=>{const sp=document.createElement('span');sp.className=cls;sp.textContent=txt;li.append(sp)};

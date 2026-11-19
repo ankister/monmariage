@@ -797,7 +797,7 @@
 
   /* ---------- Statistiques Umami ---------- */
   /* ---------- Tableaux d'honneur des jeux ---------- */
-  const GAME_NAMES = { retard: 'Antoine est en retard', cavale: 'Antoine en cavale' };
+  const GAME_NAMES = { retard: '__PRENOM_MARIE__ est en retard', cavale: '__PRENOM_MARIE__ en cavale' };
   async function loadGameScores() {
     const box = $('#game-scores');
     if (!box) return;

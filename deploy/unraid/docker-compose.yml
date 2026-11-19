@@ -1,0 +1,40 @@
+# Site de mariage — pile pour Compose Manager Plus (Unraid)
+# Utilise les images construites par GitHub : rien n'est construit sur le serveur.
+# Les réglages (prénoms, mot de passe, dossier de données…) sont dans le fichier .env de la pile.
+name: monmariage
+
+services:
+  api:
+    image: ghcr.io/ankister/monmariage-api:latest
+    container_name: monmariage-api
+    restart: unless-stopped
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      INVITE_CODE: ${INVITE_CODE:-}
+      TZ: ${TZ:-Europe/Paris}
+    volumes:
+      - ${DATA_PATH:-/mnt/user/appdata/monmariage/data}:/data
+    networks:
+      - monmariage
+
+  web:
+    image: ghcr.io/ankister/monmariage-web:latest
+    container_name: monmariage-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      PRENOM_MARIE: ${PRENOM_MARIE:-Hugo}
+      PRENOM_MARIEE: ${PRENOM_MARIEE:-Léa}
+    ports:
+      - "${WEB_PORT:-8095}:80"
+    networks:
+      - monmariage
+
+networks:
+  monmariage:
+    name: monmariage

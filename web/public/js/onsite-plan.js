@@ -1,5 +1,5 @@
 /**
- * Plan SVG du gîte Grand Breuil (bâtiment A), d'après le plan d'architecte.
+ * Plan SVG du lieu de réception (bâtiment A), d'après le plan d'architecte.
  * Partagé entre la page « Dormir sur place » et l'administration.
  * Les couleurs sont gérées en CSS (classes .room, .z-*) pour suivre le thème du site.
  */

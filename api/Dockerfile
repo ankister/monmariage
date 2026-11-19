@@ -18,10 +18,13 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY src ./src
 COPY scripts ./scripts
-RUN mkdir -p /data && chown node:node /data
-# Utilisateur non-root par défaut (surchargé par PUID/PGID dans docker-compose.yml)
-USER node
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && mkdir -p /data
+# Le conteneur démarre en root uniquement pour régler les droits du dossier de données,
+# puis l'application tourne avec l'utilisateur PUID:PGID (voir docker-entrypoint.sh)
+ENV PUID=1000 PGID=1000
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "src/server.js"]

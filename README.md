@@ -11,7 +11,7 @@ Tout tourne chez vous, en deux conteneurs Docker, sans service tiers (hors tuile
 1. [Architecture et choix techniques](#1-architecture-et-choix-techniques)
 2. [Arborescence](#2-arborescence)
 3. [Déploiement pas à pas](#3-déploiement-pas-à-pas)
-   - [Installation sur Bretzel avec mises à jour automatiques](#3-bis-installation-sur-bretzel-unraid-avec-mises-à-jour-automatiques)
+   - [Installation sur Unraid avec Compose Manager](#3-bis-installation-sur-unraid-avec-compose-manager-images-github-mises-à-jour-automatiques)
 4. [Configuration de Nginx Proxy Manager](#4-configuration-de-nginx-proxy-manager)
 5. [Utilisation de l'administration](#5-utilisation-de-ladministration)
 6. [Sauvegardes](#6-sauvegardes)
@@ -100,7 +100,9 @@ monmariage/
 ├── .env.example                # modèle de configuration (à copier en .env)
 ├── .gitignore
 ├── README.md
-├── deploy/mise-a-jour.sh     # mise à jour automatique sur Bretzel (plugin User Scripts)
+├── .github/workflows/images.yml  # construction des images + contrôle d'anonymat
+├── deploy/unraid/            # pile Compose Manager (docker-compose.yml + env.exemple)
+├── deploy/mise-a-jour.sh      # mise à jour automatique (plugin User Scripts)
 ├── api/                        # backend Node.js
 │   ├── Dockerfile
 │   ├── package.json / package-lock.json
@@ -214,107 +216,46 @@ depuis le terminal Unraid, dans ce même dossier.
 
 ---
 
-## 3 bis. Installation sur Bretzel (Unraid) avec mises à jour automatiques
+## 3 bis. Installation sur Unraid avec Compose Manager (images GitHub, mises à jour automatiques)
 
-Le code est récupéré depuis le dépôt privé GitHub grâce à une **clé de déploiement en lecture seule**,
-puis un script vérifie GitHub toutes les 10 minutes et reconstruit le site quand il y a une nouvelle version.
-Toutes les commandes se tapent dans le **terminal d'Unraid** (icône `>_` en haut à droite de l'interface).
+À chaque modification envoyée sur la branche `main`, une GitHub Action (`.github/workflows/images.yml`)
+vérifie qu'aucune donnée personnelle ne se trouve dans les fichiers des images, puis publie deux images :
+`ghcr.io/ankister/monmariage-api` et `ghcr.io/ankister/monmariage-web`.
+Les images ne contiennent ni prénoms, ni date, ni lieu, ni nom de serveur : tout cela vient du `.env`
+et de la base de données du serveur. Le dépôt GitHub, lui, reste privé.
 
-### Étape 1 — Créer la clé de déploiement (sur Bretzel)
+### Étape 1 — Rendre les images publiques (une seule fois)
 
-```bash
-mkdir -p /mnt/user/appdata/monmariage-deploy
-cd /mnt/user/appdata/monmariage-deploy
-ssh-keygen -t ed25519 -N "" -C "bretzel-monmariage" -f id_ed25519
-cat id_ed25519.pub
-```
+Après la première construction (onglet **Actions** du dépôt, coche verte) :
+GitHub → votre profil → **Packages** → `monmariage-api` → **Package settings** → **Change visibility** → **Public**.
+Même chose pour `monmariage-web`.
 
-Copiez la ligne affichée (elle commence par `ssh-ed25519`). La clé privée ne quitte jamais Bretzel.
+### Étape 2 — Créer la pile dans Compose Manager Plus
 
-### Étape 2 — Autoriser la clé sur GitHub
+1. Onglet **Docker** → **Add New Stack** → nom : `monmariage`.
+2. **Edit Stack** → **Compose File** : collez le contenu de `deploy/unraid/docker-compose.yml`.
+3. **Edit Stack** → **ENV File** : collez le contenu de `deploy/unraid/env.exemple` et remplissez :
+   les deux prénoms, et un mot de passe provisoire dans `ADMIN_PASSWORD`.
+4. **Compose Up**. Les images sont téléchargées, le dossier de données est créé avec les bons droits.
 
-<https://github.com/ankister/monmariage/settings/keys/new> → **Title** : `Bretzel` → **Key** : collez la ligne →
-laissez **« Allow write access » décoché** → **Add key**.
+Test : `http://<IP_DU_SERVEUR>:8095` et `/admin/` avec le mot de passe provisoire.
+Changez-le aussitôt dans l'admin (onglet **Sécurité**), puis videz `ADMIN_PASSWORD` dans l'ENV File.
+Ensuite : Proxy Host dans Nginx Proxy Manager vers `<IP_DU_SERVEUR>:8095` (section 4).
 
-### Étape 3 — Récupérer le site
+### Étape 3 — Mises à jour automatiques
 
-```bash
-cd /mnt/user/appdata/monmariage-deploy
-export GIT_SSH_COMMAND="ssh -i $PWD/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=$PWD/known_hosts -o StrictHostKeyChecking=accept-new"
-if command -v git >/dev/null; then
-  git clone git@github.com:ankister/monmariage.git /mnt/user/appdata/monmariage
-else
-  # Unraid sans git : on passe par un petit conteneur
-  docker run --rm -v /mnt/user/appdata:/mnt/user/appdata -v "$PWD:$PWD" -e GIT_SSH_COMMAND -e HOME=/tmp \
-    alpine/git clone git@github.com:ankister/monmariage.git /mnt/user/appdata/monmariage
-fi
-ls /mnt/user/appdata/monmariage   # doit afficher README.md, api, deploy, docker-compose.yml, web
-```
+Plugin **User Scripts** → **Add New Script** `monmariage-mise-a-jour` → **Edit Script** :
+collez **tout** le contenu de `deploy/mise-a-jour.sh` → **Save** → planning **Custom** `*/10 * * * *` → **Apply**.
+**Run Script** une fois pour vérifier (« Site déjà à jour » attendu).
 
-### Étape 4 — Configurer
+Le script trouve tout seul la pile Compose Manager, télécharge les nouvelles images et relance la pile
+seulement s'il y a du nouveau. Journal : `/mnt/user/appdata/monmariage/mise-a-jour.log`.
 
-```bash
-cd /mnt/user/appdata/monmariage
-cp .env.example .env
-nano .env        # Ctrl+O puis Entrée pour enregistrer, Ctrl+X pour quitter
-```
+> Revenir à une version précédente : remplacez `:latest` par l'identifiant d'un commit
+> (ex. `ghcr.io/ankister/monmariage-web:4f2c…`) dans la pile, puis **Compose Up**.
 
-Valeurs pour Bretzel :
-
-```ini
-WEB_PORT=8095
-PUID=99
-PGID=100
-DATA_PATH=/mnt/user/appdata/monmariage/data
-```
-
-> **Base SQLite et couche FUSE d'Unraid** : comme pour Plex, une base SQLite sur `/mnt/user/…` peut souffrir
-> de la couche `shfs`. Si le partage `appdata` est sur un pool de cache, préférez le chemin direct du pool,
-> par exemple `DATA_PATH=/mnt/<nom_du_pool>/appdata/monmariage/data` (`ls /mnt` affiche le nom des pools).
-
-```bash
-mkdir -p /mnt/user/appdata/monmariage/data          # ou le chemin choisi pour DATA_PATH
-chown -R 99:100 /mnt/user/appdata/monmariage/data
-```
-
-### Étape 5 — Mot de passe admin et démarrage
-
-```bash
-cd /mnt/user/appdata/monmariage
-docker compose build
-docker compose run --rm api node scripts/hash-password.js   # tapez le mot de passe, copiez la ligne ADMIN_PASSWORD_HASH='…'
-nano .env                                                    # collez-la à la place de « ADMIN_PASSWORD_HASH= »
-docker compose up -d
-docker compose ps                                            # les deux conteneurs doivent être « healthy »
-```
-
-Test : `http://192.168.1.55:8095` puis `http://192.168.1.55:8095/admin/`.
-Ensuite, configurez Nginx Proxy Manager (section 4) avec **Forward Hostname/IP** `192.168.1.55` et **Forward Port** `8095`.
-
-### Étape 6 — Mises à jour automatiques
-
-1. **Apps** → installez le plugin **User Scripts** (s'il ne l'est pas déjà).
-2. **Settings → User Scripts → Add New Script** → nom : `monmariage-mise-a-jour`.
-3. Survolez l'engrenage du script → **Edit Script**, remplacez tout le contenu par :
-
-   ```bash
-   #!/bin/bash
-   bash /mnt/user/appdata/monmariage/deploy/mise-a-jour.sh
-   ```
-
-4. **Save Changes**, puis dans la liste déroulante du planning choisissez **Custom** et indiquez `*/10 * * * *`
-   (toutes les 10 minutes) → **Apply**.
-5. Cliquez sur **Run Script** une première fois : le message doit être « Site déjà à jour ».
-
-À chaque nouvelle version envoyée sur GitHub, le site est reconstruit dans les 10 minutes.
-Le journal se trouve dans `/mnt/user/appdata/monmariage-deploy/mise-a-jour.log`.
-
-- Forcer une reconstruction immédiate : `FORCE=1 bash /mnt/user/appdata/monmariage/deploy/mise-a-jour.sh`
-- Revenir à une version précédente : `cd /mnt/user/appdata/monmariage && git log --oneline` puis
-  `git reset --hard <code>` et `docker compose up -d --build` (désactivez le script entre-temps, sinon il revient à la dernière version)
-
-> Ne modifiez pas les fichiers du site directement sur Bretzel : le script les remplace par la version GitHub.
-> Seuls `.env` et le dossier de données vous appartiennent sur le serveur.
+> Commandes à lancer dans le conteneur API (mot de passe oublié…) : ajoutez `--user 99:100`,
+> ex. `docker exec -it --user 99:100 monmariage-api node scripts/reset-password.js`.
 
 ## 4. Configuration de Nginx Proxy Manager
 
@@ -478,7 +419,7 @@ cd web && npm install && npm run vendor   # puis servir web/public avec un serve
 |---|---|
 | `SQLITE_CANTOPEN` / permission refusée au démarrage | Le dossier `DATA_PATH` n'appartient pas à `PUID:PGID` → `chown 99:100 data` (Unraid) |
 | « Aucun mot de passe administrateur n'est configuré » | `ADMIN_PASSWORD_HASH` vide ou mal collé (apostrophes ?) → corrigez `.env`, puis `docker compose up -d` |
-| Mot de passe oublié | `docker compose exec api node scripts/reset-password.js` |
+| Mot de passe oublié | `docker exec -it --user 99:100 monmariage-api node scripts/reset-password.js` (Unraid) |
 | « Origine refusée » dans l'admin | Le nom de domaine reçu ne correspond pas : vérifiez que NPM transmet bien l'en-tête Host (comportement par défaut) |
 | La carte reste grise | Le navigateur ne joint pas `tile.openstreetmap.org` (bloqueur, réseau filtré) |
 | Les cartes n'affichent pas un lieu | Le lieu n'a pas de coordonnées : un ⚠️ l'indique dans l'admin |

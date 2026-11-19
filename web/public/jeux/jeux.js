@@ -1,8 +1,8 @@
 {
 const $=id=>document.getElementById(id);
 const GAMES={
-  retard:{title:'Antoine est en retard',src:'retard/index.html#integre',api:'retard/api/scores',ls:'antoine-retard-scores',detail:e=>e.won?"À l'heure":'En retard'},
-  cavale:{title:'Antoine en cavale',src:'cavale/index.html#integre',api:'cavale/api/scores',ls:'antoine-cavale-scores',detail:e=>e.level?'Niveau '+e.level:''}
+  retard:{title:'__PRENOM_MARIE__ est en retard',src:'retard/index.html#integre',api:'retard/api/scores',ls:'jeu-retard-scores',detail:e=>e.won?"À l'heure":'En retard'},
+  cavale:{title:'__PRENOM_MARIE__ en cavale',src:'cavale/index.html#integre',api:'cavale/api/scores',ls:'jeu-cavale-scores',detail:e=>e.level?'Niveau '+e.level:''}
 };
 const frame=$('frame');let current=null;
 

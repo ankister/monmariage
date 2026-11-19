@@ -1,5 +1,5 @@
 /**
- * Tableaux d'honneur des mini-jeux (« Antoine est en retard », « Antoine en cavale »).
+ * Tableaux d'honneur des mini-jeux (« En retard », « En cavale »).
  * Les jeux appellent « api/scores » relativement à leur page : Nginx renvoie
  * /jeux/<jeu>/api/scores vers /api/games/<jeu>/scores.
  * Format attendu par les jeux : tableau de { name, score, t, won | level }.

@@ -8,7 +8,11 @@ RUN sh scripts/vendor.sh /out
 
 # ---------- Étape 2 : serveur Nginx ----------
 FROM nginx:1.28-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Prénoms affichés dans les jeux : valeurs par défaut fictives, à remplacer dans le fichier .env
+ENV PRENOM_MARIE=Hugo \
+    PRENOM_MARIEE=Léa
+# Modèle de configuration : l'image nginx y insère les variables d'environnement au démarrage
+COPY templates /etc/nginx/templates
 COPY public /usr/share/nginx/html
 COPY --from=vendor /out /usr/share/nginx/html/vendor
 EXPOSE 80

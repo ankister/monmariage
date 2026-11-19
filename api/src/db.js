@@ -148,8 +148,8 @@ CREATE TABLE IF NOT EXISTS game_scores (
   game       TEXT NOT NULL,                   -- retard | cavale
   name       TEXT NOT NULL,
   score      INTEGER NOT NULL,
-  won        INTEGER NOT NULL DEFAULT 0,      -- « Antoine est en retard » : arrivé à l'heure
-  level      INTEGER NOT NULL DEFAULT 0,      -- « Antoine en cavale » : niveau atteint
+  won        INTEGER NOT NULL DEFAULT 0,      -- « En retard » : arrivé à l'heure
+  level      INTEGER NOT NULL DEFAULT 0,      -- « En cavale » : niveau atteint
   t          INTEGER NOT NULL,                -- horodatage (ms) utilisé par les jeux
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

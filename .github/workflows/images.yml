@@ -1,0 +1,63 @@
+# Construit les images Docker du site à chaque modification de la branche main
+# et les publie sur le registre GitHub (ghcr.io).
+#
+# Les images peuvent être rendues publiques : elles ne contiennent aucune donnée personnelle.
+# L'étape « anonymat » le vérifie et bloque la publication si un nom, un lieu ou une adresse
+# privée apparaît dans les fichiers copiés dans les images.
+name: Images Docker
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  anonymat:
+    name: Vérification d'anonymat
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aucune donnée personnelle dans les fichiers des images
+        run: |
+          # Termes interdits (ce fichier reste dans le dépôt privé, il n'est pas copié dans les images)
+          TERMES='pauline|antoine|bretzel|cassoulet|bourges|breuil|villecelin|ravauderie|celle-cond|paulineetantoine|192\.168\.'
+          if grep -rniE "$TERMES" api/src api/scripts api/package.json api/Dockerfile api/docker-entrypoint.sh \
+               web/public web/templates web/scripts web/Dockerfile web/package.json --exclude-dir=vendor; then
+            echo "::error::Donnée personnelle trouvée ci-dessus : publication des images annulée."
+            exit 1
+          fi
+          echo "Aucune donnée personnelle trouvée ✓"
+
+  images:
+    name: Image ${{ matrix.service }}
+    needs: anonymat
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Construction et publication
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          platforms: linux/amd64
+          push: true
+          # Pas d'attestation ni de SBOM : ils contiendraient l'adresse du dépôt et l'historique de construction
+          provenance: false
+          sbom: false
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/monmariage-${{ matrix.service }}:latest
+            ghcr.io/${{ github.repository_owner }}/monmariage-${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

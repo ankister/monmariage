@@ -1,5 +1,5 @@
 /**
- * Les 21 chambres du gîte Grand Breuil (bâtiment A), d'après le plan d'architecte.
+ * Les 21 chambres du lieu de réception (bâtiment A), d'après le plan d'architecte.
  * Insérées une seule fois (table vide) ; tout est ensuite modifiable dans l'admin, sauf la géométrie du plan.
  *
  * capacity : nombre total de couchages (lit double = 2, lit simple / enfant / bébé = 1)

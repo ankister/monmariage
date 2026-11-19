@@ -1,5 +1,9 @@
 # Nginx du conteneur « web » : sert le site statique et relaie /api vers le conteneur « api ».
 # Nginx Proxy Manager (NPM) se place devant et gère le HTTPS.
+#
+# Modèle : au démarrage, l'image nginx remplace ${PRENOM_MARIE} et ${PRENOM_MARIEE} par les valeurs
+# des variables d'environnement (fichier .env). Les fichiers du site ne contiennent donc aucun prénom :
+# l'image peut être publiée sans données personnelles.
 
 # Si NPM indique le protocole d'origine (https), on le transmet ; sinon on prend celui de la connexion.
 map $http_x_forwarded_proto $forwarded_proto {
@@ -29,6 +33,12 @@ server {
     add_header X-Robots-Tag "noindex, nofollow" always;
     # Seules les tuiles OpenStreetMap sont chargées depuis l'extérieur
     add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; font-src 'self'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'" always;
+
+    # Prénoms des mariés insérés dans les pages et scripts des jeux (marqueurs __PRENOM_MARIE__ / __PRENOM_MARIEE__)
+    sub_filter_types application/javascript;
+    sub_filter_once off;
+    sub_filter '__PRENOM_MARIEE__' '${PRENOM_MARIEE}';
+    sub_filter '__PRENOM_MARIE__' '${PRENOM_MARIE}';
 
     # Tableaux d'honneur des jeux : chaque jeu appelle « api/scores » à côté de sa page
     rewrite ^/jeux/(retard|cavale)/api/scores$ /api/games/$1/scores last;

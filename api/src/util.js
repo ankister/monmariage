@@ -105,7 +105,7 @@ function tzOffset(date, tz) {
   return asUtc - Math.floor(date.getTime() / 1000) * 1000;
 }
 
-/** "2028-08-19T14:30" en heure locale de `tz` -> Date (instant UTC). */
+/** "2030-06-15T14:30" en heure locale de `tz` -> Date (instant UTC). */
 function zonedToUtc(local, tz) {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local || '');
   if (!m) return null;

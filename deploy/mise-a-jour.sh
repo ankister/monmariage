@@ -1,98 +1,59 @@
 #!/bin/bash
 # =====================================================================
-#  Mise à jour automatique du site de mariage sur Bretzel (Unraid)
+#  Mise à jour automatique du site de mariage sur Unraid
 #
-#  Vérifie s'il y a du nouveau sur GitHub ; si oui, récupère le code,
-#  reconstruit et relance le site. Sinon, ne fait rien.
-#  À lancer toutes les 10 minutes avec le plugin « User Scripts ».
+#  Télécharge les dernières images publiées par GitHub ; s'il y a du
+#  nouveau, relance la pile. Sinon, ne fait rien.
+#  À coller dans le plugin « User Scripts », planning */10 * * * *.
 #
-#  Ne touche jamais à .env ni au dossier de données (ils ne sont pas
-#  suivis par Git).
-#
-#  Variables modifiables (valeurs par défaut ci-dessous) :
-#    REPO_DIR    dossier du site cloné
-#    DEPLOY_DIR  dossier de la clé de déploiement et du journal
-#    BRANCH      branche à suivre
+#  Le dossier de la pile est trouvé automatiquement (Compose Manager) ;
+#  on peut aussi l'imposer : STACK_DIR=/chemin/vers/la/pile
 # =====================================================================
 
-# Tout le script est dans une fonction : Bash le lit entièrement avant de l'exécuter,
-# ce qui évite tout problème quand la mise à jour remplace ce fichier pendant qu'il tourne.
 main() {
   set -uo pipefail
-
-  local REPO_DIR="${REPO_DIR:-/mnt/user/appdata/monmariage}"
-  local DEPLOY_DIR="${DEPLOY_DIR:-/mnt/user/appdata/monmariage-deploy}"
-  local BRANCH="${BRANCH:-main}"
-  local LOG="$DEPLOY_DIR/mise-a-jour.log"
-  local LOCK="$DEPLOY_DIR/.mise-a-jour.lock"
-
+  local NAME="monmariage"
+  local LOG="${LOG:-/mnt/user/appdata/monmariage/mise-a-jour.log}"
+  mkdir -p "$(dirname "$LOG")"
   log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG"; }
 
-  mkdir -p "$DEPLOY_DIR"
-
-  # Une seule mise à jour à la fois
-  if ! mkdir "$LOCK" 2>/dev/null; then
-    # Verrou de plus d'une heure : une exécution précédente a été interrompue
-    if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +60 2>/dev/null)" ]; then
-      rmdir "$LOCK" 2>/dev/null; mkdir "$LOCK" || exit 0
-    else
-      echo "Mise à jour déjà en cours, on passe."
-      exit 0
-    fi
+  # Dossier contenant docker-compose.yml : réglage manuel, sinon recherche dans Compose Manager
+  local DIR="${STACK_DIR:-}"
+  if [ -z "$DIR" ]; then
+    local base cand
+    for base in /boot/config/plugins/compose.manager/projects /boot/config/plugins/compose.manager.plus/projects; do
+      cand="$base/$NAME"
+      [ -d "$cand" ] || continue
+      # Pile « indirecte » : le fichier indirect contient le vrai dossier
+      if [ -f "$cand/indirect" ]; then DIR="$(cat "$cand/indirect")"; else DIR="$cand"; fi
+      break
+    done
   fi
-  # Chemin du verrou écrit en dur dans le trap : il est exécuté après la fin de main()
-  trap "rmdir '$LOCK' 2>/dev/null" EXIT
+  if [ -z "$DIR" ] || { [ ! -f "$DIR/docker-compose.yml" ] && [ ! -f "$DIR/compose.yaml" ]; }; then
+    log "ERREUR : pile « $NAME » introuvable. Indiquez son dossier : STACK_DIR=/chemin bash $0"
+    exit 1
+  fi
+  cd "$DIR" || exit 1
 
-  # Accès SSH en lecture seule au dépôt privé (clé de déploiement)
-  export GIT_SSH_COMMAND="ssh -i $DEPLOY_DIR/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile=$DEPLOY_DIR/known_hosts -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+  # Images utilisées avant la mise à jour
+  local before after
+  before="$(docker compose images -q 2>/dev/null | sort | tr '\n' ' ')"
 
-  # Git : celui d'Unraid s'il existe, sinon un petit conteneur alpine/git
-  if command -v git >/dev/null 2>&1; then
-    g() { git -C "$REPO_DIR" "$@"; }
+  if ! docker compose pull -q >>"$LOG" 2>&1; then
+    log "ERREUR : téléchargement des images impossible (réseau ? images encore privées ?)."
+    exit 1
+  fi
+  docker compose up -d >>"$LOG" 2>&1
+  after="$(docker compose images -q 2>/dev/null | sort | tr '\n' ' ')"
+
+  if [ "$before" != "$after" ]; then
+    log "Nouvelle version installée ✓"
+    docker image prune -f >/dev/null 2>&1
   else
-    g() {
-      docker run --rm -v "$REPO_DIR:$REPO_DIR" -v "$DEPLOY_DIR:$DEPLOY_DIR" -w "$REPO_DIR" \
-        -e GIT_SSH_COMMAND -e HOME=/tmp alpine/git -c safe.directory="$REPO_DIR" "$@"
-    }
+    echo "Site déjà à jour."
   fi
 
-  if [ ! -d "$REPO_DIR/.git" ]; then
-    log "ERREUR : $REPO_DIR n'est pas un dépôt Git (voir la section « Installation sur Bretzel » du README)."
-    exit 1
-  fi
-
-  if ! g fetch --quiet origin "$BRANCH"; then
-    log "ERREUR : impossible de contacter GitHub (clé de déploiement ? réseau ?)."
-    exit 1
-  fi
-
-  local LOCAL REMOTE
-  LOCAL="$(g rev-parse HEAD)"
-  REMOTE="$(g rev-parse "origin/$BRANCH")"
-  if [ "$LOCAL" = "$REMOTE" ] && [ "${FORCE:-0}" != "1" ]; then
-    echo "Site déjà à jour (${LOCAL:0:7})."
-    exit 0
-  fi
-
-  log "Nouvelle version : ${LOCAL:0:7} -> ${REMOTE:0:7} — $(g log -1 --format=%s "origin/$BRANCH")"
-
-  # Aligne le code sur GitHub ; .env et les données (ignorés par Git) ne sont pas touchés
-  if ! g reset --quiet --hard "origin/$BRANCH"; then
-    log "ERREUR : échec de la récupération du code."
-    exit 1
-  fi
-
-  cd "$REPO_DIR" || exit 1
-  if docker compose up -d --build >>"$LOG" 2>&1; then
-    log "Site reconstruit et relancé ✓"
-    docker image prune -f >/dev/null 2>&1 # supprime les anciennes images inutilisées
-  else
-    log "ERREUR : la reconstruction a échoué, voir le détail ci-dessus. L'ancienne version peut encore tourner."
-    exit 1
-  fi
-
-  # Le journal ne garde que les 500 dernières lignes
-  tail -n 500 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+  tail -n 500 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"
 }
 
 main "$@"

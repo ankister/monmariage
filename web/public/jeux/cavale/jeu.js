@@ -30,7 +30,7 @@ const CHARS=[
  {dress:'#ff8fb1',trim:'#ffd1de',hair:'#e0a53a',acc:'crown',start:[10,9],corner:[0,24],delay:7,intro:"La demoiselle d'honneur aussi !"}];
 let saved=false,T=24,dpr=1,grid=[],dots=0,score=0,best=0,lives=3,level=1,state='title',prev='play',stT=0,want=-1;
 let fright=0,combo=0,phaseI=0,phaseT=0,clock=0,popups=[],muted=false,ac=null,groom,ghosts=[],readyMsg='';
-try{best=+localStorage.getItem('marie-cavale-best')||0}catch(e){}
+try{best=+localStorage.getItem('jeu-cavale-record')||0}catch(e){}
 
 const wrap=x=>(x+COLS)%COLS;
 const cell=(x,y)=>y<0||y>=ROWS?'#':grid[y][wrap(x)];
@@ -229,8 +229,8 @@ function draw(){
   }
   for(const p of popups)label(p.txt,p.x,p.y-(1-p.t)*.8,.6,'#ffd36b');
   if(state==='ready'||state==='title'){
-    label('Antoine',gx,gy-1.05,.45,'#ffffff');
-    if(ghosts[0]){const[bx,by]=pos(ghosts[0]);label('Pauline',bx,by-1.15,.45,'#ffffff')}
+    label('__PRENOM_MARIE__',gx,gy-1.05,.45,'#ffffff');
+    if(ghosts[0]){const[bx,by]=pos(ghosts[0]);label('__PRENOM_MARIEE__',bx,by-1.15,.45,'#ffffff')}
   }
   if(state==='ready'){label('Prêt ?',9.5,11.5,.9,'#ffd36b');if(readyMsg)label(readyMsg,9.5,13.5,.6,'#f3c6cf')}
   if(state==='dying'&&stT<1.4)label('Attrapé !',9.5,11.5,.9,'#f3c6cf');
@@ -252,8 +252,8 @@ function startGame(){
 }
 function gameOver(){
   state='over';const rec=score>best;
-  if(rec){best=score;try{localStorage.setItem('marie-cavale-best',best)}catch(e){}}
-  hud();showOv('Oui, je le veux !',`Pauline a rattrapé Antoine et lui a passé la bague au doigt. Score : ${score}, niveau ${level}.${rec?' Nouveau record !':''}`,'Rejouer',score>0);
+  if(rec){best=score;try{localStorage.setItem('jeu-cavale-record',best)}catch(e){}}
+  hud();showOv('Oui, je le veux !',`__PRENOM_MARIEE__ a rattrapé __PRENOM_MARIE__ et lui a passé la bague au doigt. Score : ${score}, niveau ${level}.${rec?' Nouveau record !':''}`,'Rejouer',score>0);
 }
 function togglePause(){
   if(state==='paused'){state=prev;$('ov').hidden=true;$('pause').textContent='Pause'}
@@ -291,7 +291,7 @@ function resize(){
   cv.width=Math.round(w*dpr);cv.height=Math.round(T*ROWS*dpr);buildWalls();
 }
 /* ---------- tableau d'honneur ---------- */
-const API='api/scores',LS_SCORES='antoine-cavale-scores',LS_NAME='antoine-jeux-pseudo';
+const API='api/scores',LS_SCORES='jeu-cavale-scores',LS_NAME='jeu-pseudo';
 let board=[],online=false,lastEntry=null;
 function readPseudo(){try{return localStorage.getItem(LS_NAME)||''}catch(e){return''}}
 function readLocal(){try{const a=JSON.parse(localStorage.getItem(LS_SCORES)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
@@ -305,7 +305,7 @@ async function loadBoard(){
 function renderBoard(){
   $('boardNote').textContent=online?'Classement partagé entre tous les invités.':'Scores enregistrés sur cet appareil.';
   const ol=$('boardList');ol.textContent='';
-  if(!board.length){const li=document.createElement('li');li.className='empty';li.textContent="Aucun score pour l'instant. À toi d'aider Antoine !";ol.append(li);return}
+  if(!board.length){const li=document.createElement('li');li.className='empty';li.textContent="Aucun score pour l'instant. À toi d'aider __PRENOM_MARIE__ !";ol.append(li);return}
   board.slice(0,10).forEach((e,i)=>{
     const li=document.createElement('li');if(lastEntry&&e.t===lastEntry.t&&e.name===lastEntry.name)li.className='me';
     const c=(cls,txt)=>{const sp=document.createElement('span');sp.className=cls;sp.textContent=txt;li.append(sp)};
