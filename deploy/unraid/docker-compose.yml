@@ -15,6 +15,8 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       INVITE_CODE: ${INVITE_CODE:-}
       TZ: ${TZ:-Europe/Paris}
+      PRENOM_MARIE: ${PRENOM_MARIE:-}
+      PRENOM_MARIEE: ${PRENOM_MARIEE:-}
     volumes:
       - ${DATA_PATH:-/mnt/user/appdata/monmariage/data}:/data
     networks:

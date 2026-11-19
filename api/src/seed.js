@@ -4,9 +4,17 @@
  */
 'use strict';
 
+// Noms du couple : variables PRENOM_MARIEE / PRENOM_MARIE (fichier .env), sinon exemple
+const EXAMPLE_COUPLE = 'Léa & Hugo';
+function coupleFromEnv() {
+  const a = (process.env.PRENOM_MARIEE || '').trim();
+  const b = (process.env.PRENOM_MARIE || '').trim();
+  return a && b ? `${a} & ${b}` : '';
+}
+
 function defaultContent() {
   return {
-    couple: 'Léa & Hugo',
+    couple: coupleFromEnv() || EXAMPLE_COUPLE,
     // Date et heure locales (fuseau ci-dessous) du début de la cérémonie
     date: '2030-06-15T14:30',
     timezone: 'Europe/Paris',
@@ -99,4 +107,4 @@ function defaultGites() {
   ];
 }
 
-module.exports = { defaultContent, defaultPlaces, defaultGites };
+module.exports = { EXAMPLE_COUPLE, coupleFromEnv, defaultContent, defaultPlaces, defaultGites };

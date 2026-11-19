@@ -7,7 +7,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const Database = require('better-sqlite3');
-const { defaultContent, defaultPlaces, defaultGites } = require('./seed');
+const { defaultContent, defaultPlaces, defaultGites, EXAMPLE_COUPLE, coupleFromEnv } = require('./seed');
 const { defaultRooms } = require('./rooms-seed');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -193,6 +193,18 @@ function seedIfEmpty() {
   }
 }
 seedIfEmpty();
+
+/* Noms d'exemple jamais modifiés dans l'admin : on applique ceux du .env */
+(function applyCoupleFromEnv() {
+  const envCouple = coupleFromEnv();
+  if (!envCouple) return;
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'content'").get();
+  const content = JSON.parse(row.value);
+  if (content.couple === EXAMPLE_COUPLE) {
+    content.couple = envCouple;
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'content'").run(JSON.stringify(content));
+  }
+})();
 
 /* ---------- Helpers ---------- */
 function getContent() {
