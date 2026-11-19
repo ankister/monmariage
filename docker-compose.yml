@@ -1,11 +1,14 @@
-# Site de mariage — docker compose up -d --build
+# Site de mariage — docker compose up -d (ou « Compose Up » dans Compose Manager sur Unraid)
 # Toutes les valeurs se règlent dans le fichier .env (voir .env.example).
+# « pull_policy: build » : les images sont reconstruites à chaque démarrage à partir des fichiers
+# du dossier (rapide grâce au cache), donc une mise à jour = déposer les fichiers + Compose Up.
 name: monmariage
 
 services:
   api:
     build: ./api
     image: monmariage-api:latest
+    pull_policy: build
     container_name: monmariage-api
     restart: unless-stopped
     # Propriétaire des fichiers de la base (Unraid : PUID=99 / PGID=100)
@@ -24,6 +27,7 @@ services:
   web:
     build: ./web
     image: monmariage-web:latest
+    pull_policy: build
     container_name: monmariage-web
     restart: unless-stopped
     depends_on:
