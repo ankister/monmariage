@@ -8,10 +8,11 @@ const express = require('express');
 const A = require('../appearance');
 const { HttpError, str } = require('../util');
 
-/* ---------- Public ---------- */
+/* ---------- Public ----------
+// Adresse sans extension « .css » : les caches de type « Cache Assets » (Nginx Proxy Manager) ne la conservent pas */
 const publicRouter = express.Router();
 
-publicRouter.get('/appearance.css', (req, res) => {
+publicRouter.get('/apparence', (req, res) => {
   const css = A.appearanceCss();
   const etag = '"' + crypto.createHash('sha1').update(css).digest('base64url') + '"';
   res.set('Content-Type', 'text/css; charset=utf-8');

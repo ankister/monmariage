@@ -75,7 +75,7 @@ function canView(req) {
 }
 
 /** Routes de l'API toujours accessibles (page de connexion, apparence, santé). */
-const OPEN = [/^\/access\//, /^\/health$/, /^\/appearance\.css$/, /^\/fonts\.css$/];
+const OPEN = [/^\/access\//, /^\/health$/, /^\/apparence$/, /^\/fonts\.css$/];
 
 /** Middleware : refuse les routes publiques de l'API sans session quand l'accès est restreint. */
 function guard(req, res, next) {
