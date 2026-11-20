@@ -4,7 +4,7 @@
 'use strict';
 
 (() => {
-  const { esc, api, applyTheme, loadAnalytics } = window.MM;
+  const { esc, api, loadAnalytics } = window.MM;
   const { render, bind, euro } = window.MMPlan;
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -260,7 +260,6 @@
   async function init() {
     try {
       const [site] = await Promise.all([api('/content'), load()]);
-      applyTheme(site.content.theme.colors);
       loadAnalytics();
       bindText('couple', site.content.couple);
       document.title = `Dormir sur place — Mariage ${site.content.couple}`;

@@ -4,7 +4,7 @@
 'use strict';
 
 (() => {
-  const { esc, api, KINDS, applyTheme, loadAnalytics, renderLogo, makeMap, pinIcon, hasCoords, directionsUrl, formatDateLong, formatDay } = window.MM;
+  const { esc, api, KINDS, loadAnalytics, renderLogo, makeMap, pinIcon, hasCoords, directionsUrl, formatDateLong, formatDay } = window.MM;
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -225,6 +225,31 @@
     });
   }
 
+  /* ---------- Ordre et affichage des blocs (réglés dans l'admin, onglet Apparence) ---------- */
+  function applyLayout(sections) {
+    const main = $('#contenu');
+    const navList = $('.topnav ul');
+    const jeux = $('#nav-jeux');
+    (sections || []).forEach((s) => {
+      const el = document.getElementById(s.id);
+      if (!el || el.parentElement !== main) return;
+      main.append(el); // déplacé à la suite, dans l'ordre choisi
+      el.toggleAttribute('data-off', !s.visible);
+      const link = $(`a[href="#${s.id}"]`, navList)?.parentElement;
+      if (link) { navList.insertBefore(link, jeux); link.toggleAttribute('data-off', !s.visible); }
+    });
+    // Formulaire de réponse masqué : on retire aussi les boutons qui y mènent
+    const rsvpOff = (sections || []).some((s) => s.id === 'rsvp' && !s.visible);
+    $$('a[href="#rsvp"]').forEach((a) => a.toggleAttribute('data-off', rsvpOff));
+  }
+
+  /** Fond alterné d'une section visible sur deux, quel que soit l'ordre choisi. */
+  function stripeSections() {
+    $$('#contenu > section')
+      .filter((el) => !el.hidden && !el.hasAttribute('data-off'))
+      .forEach((el, i) => el.classList.toggle('section-soft', i % 2 === 1));
+  }
+
   /* ---------- Démarrage ---------- */
   async function init() {
     try {
@@ -234,7 +259,6 @@
       return;
     }
     const c = state.content;
-    applyTheme(c.theme.colors);
     renderLogo($('#hero-logo'), c.logo);
     loadAnalytics();
     document.title = `Mariage ${c.couple}`;
@@ -261,6 +285,8 @@
     }
     $('#hebergement').hidden = !state.gites.length && !c.onsite;
     setupRsvp(c, state.code_required);
+    applyLayout(state.sections);
+    stripeSections();
 
     const contact = [c.contact_email && `<a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a>`,
       c.contact_phone && `<a href="tel:${esc(c.contact_phone.replace(/\s/g, ''))}">${esc(c.contact_phone)}</a>`].filter(Boolean);

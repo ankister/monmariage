@@ -1,6 +1,6 @@
 /**
  * Interface d'administration (application monopage, sans framework).
- * Vues : Accueil, Invités, Gîtes & réservations, Lieux, Contenu, Sécurité.
+ * Vues : Accueil, Invités, Gîtes & réservations, Lieux, Contenu, Style (admin-appearance.js), Sécurité.
  */
 'use strict';
 
@@ -572,7 +572,7 @@
           <label class="field">Nom du thème<input name="theme_title" value="${esc(c.theme.title)}"></label>
           <label class="field">Description<textarea name="theme_description" rows="4">${esc(c.theme.description)}</textarea></label>
           <label class="field">Code vestimentaire<textarea name="theme_dress_code" rows="3">${esc(c.theme.dress_code)}</textarea></label>
-          <div class="field"><span>Couleurs <small class="help">La première couleur colore les boutons et titres du site.</small></span>
+          <div class="field"><span>Couleurs <small class="help">Palette présentée dans la section « Thème ». Les couleurs du site lui-même se règlent dans l’onglet Style.</small></span>
             <div class="colors" id="colors"></div>
             <button type="button" class="btn btn-ghost btn-small" id="add-color">+ Ajouter une couleur</button>
           </div>
@@ -866,10 +866,29 @@
      Vue : Sécurité
      ========================================================= */
   async function security() {
-    const s = await call('/admin/security');
+    const [s, acc] = await Promise.all([call('/admin/security'), call('/admin/access')]);
     view.innerHTML = `
       <div class="page-head"><h1>Sécurité</h1></div>
       <div class="panel-grid">
+        <form class="panel" id="access-form">
+          <h2>Accès au site</h2>
+          <p class="muted small">Activé, le site entier (pages, chambres, jeux, informations) n’est visible qu’après avoir saisi le mot de passe des invités.
+            Chaque appareil le saisit une seule fois (valable 6 mois). Vous restez connectés au site depuis l’administration.</p>
+          <label class="switch"><input type="checkbox" name="enabled" ${acc.enabled ? 'checked' : ''}><span class="switch-ui" aria-hidden="true"></span>
+            <span>Site réservé aux invités (mot de passe demandé)</span></label>
+          <label class="field">${acc.has_password ? 'Nouveau mot de passe des invités' : 'Mot de passe des invités'}
+            <input name="password" autocomplete="off" spellcheck="false" maxlength="100" placeholder="${acc.has_password ? 'Laisser vide pour garder l’actuel' : 'Ex. Mariage2028'}">
+            <small class="help">4 caractères minimum, à imprimer sur le faire-part. ${acc.has_password ? 'Un nouveau mot de passe déconnecte tous les invités.' : ''}</small></label>
+          <div data-link hidden>
+            <p class="small"><strong>Lien direct</strong> (le mot de passe est saisi automatiquement, idéal pour un QR code) :</p>
+            <div class="access-link"><input readonly data-link-url aria-label="Lien direct"><button type="button" class="btn btn-ghost btn-small" data-copy>Copier</button></div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" type="submit">Enregistrer</button>
+            ${acc.has_password ? '<button class="btn btn-ghost" type="button" data-logout-all>Déconnecter tous les invités</button>' : ''}
+          </div>
+          <p class="small" data-access-status role="status"></p>
+        </form>
         <form class="panel" id="code-form">
           <h2>Code d’invitation</h2>
           <p class="muted small">Si vous indiquez un code (par exemple imprimé sur le faire-part), les invités devront le saisir pour répondre ou réserver.
@@ -887,6 +906,36 @@
           <p class="form-error" role="alert"></p>
         </form>
       </div>`;
+
+    const af = $('#access-form');
+    const showStatus = (enabled) => {
+      $('[data-access-status]', af).textContent = enabled ? '🔒 Site réservé aux invités.' : '🌐 Site ouvert à toute personne ayant l’adresse.';
+    };
+    showStatus(acc.enabled);
+    const pwdIn = af.elements.password;
+    pwdIn.addEventListener('input', () => {
+      const v = pwdIn.value.trim();
+      $('[data-link]', af).hidden = !v;
+      $('[data-link-url]', af).value = v ? `${location.origin}/acces/?code=${encodeURIComponent(v)}` : '';
+    });
+    $('[data-copy]', af).addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText($('[data-link-url]', af).value); toast('Lien copié'); }
+      catch { $('[data-link-url]', af).select(); }
+    });
+    af.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const r = await call('/admin/access', { method: 'PUT', body: { enabled: af.elements.enabled.checked, password: pwdIn.value.trim() } });
+        showStatus(r.enabled);
+        toast(r.enabled ? 'Site réservé aux invités' : 'Site ouvert à tous');
+        if (pwdIn.value.trim()) refresh(); // le libellé passe à « Nouveau mot de passe »
+      } catch (err) { toast(err.message, 'error'); }
+    });
+    $('[data-logout-all]', af)?.addEventListener('click', async () => {
+      if (!(await confirmBox('Déconnecter tous les invités ?', 'Chacun devra saisir à nouveau le mot de passe du site.'))) return;
+      try { await call('/admin/access/logout-all', { method: 'POST', body: {} }); toast('Tous les invités ont été déconnectés'); }
+      catch (err) { toast(err.message, 'error'); }
+    });
 
     $('#code-form').addEventListener('submit', async (e) => {
       e.preventDefault();

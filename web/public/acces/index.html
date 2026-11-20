@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Notre mariage — accès invités</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/api/appearance.css">
+  <script src="/acces/acces.js" defer></script>
+</head>
+<body class="access-page">
+  <main class="access">
+    <form class="access-card" id="access-form" novalidate>
+      <svg class="ornament" viewBox="0 0 120 40" aria-hidden="true">
+        <path d="M2 20 H48 M72 20 H118" stroke="currentColor" stroke-width="1" fill="none"/>
+        <path d="M60 6 C52 14 52 26 60 34 C68 26 68 14 60 6 Z" fill="none" stroke="currentColor" stroke-width="1"/>
+        <path d="M48 20 C52 14 56 14 60 20 C64 14 68 14 72 20" fill="none" stroke="currentColor" stroke-width="1"/>
+      </svg>
+      <p class="eyebrow">Nous nous marions</p>
+      <h1>Bienvenue&nbsp;!</h1>
+      <p class="muted">Ce site est réservé à nos invités. Saisissez le mot de passe indiqué sur votre faire-part.</p>
+      <label class="field">Mot de passe
+        <input type="password" name="password" autocomplete="current-password" required maxlength="100" autofocus>
+      </label>
+      <button class="btn btn-primary" type="submit">Entrer</button>
+      <p class="form-status error" id="access-error" role="alert"></p>
+    </form>
+  </main>
+</body>
+</html>

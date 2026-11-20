@@ -7,6 +7,7 @@ const express = require('express');
 const { db, getContent, getPrivate, gitesWithAvailability } = require('../db');
 const { HttpError, str, int, email, nameKey, rateLimit, zonedToUtc } = require('../util');
 const { createCaptcha, verifyCaptcha } = require('../captcha');
+const { getAppearance } = require('../appearance');
 
 const router = express.Router();
 
@@ -42,6 +43,7 @@ router.get('/content', (req, res) => {
   res.json({
     content: { ...content, date_utc: start ? start.toISOString() : null },
     code_required: !!(getPrivate('invite_code') || '').trim(),
+    sections: getAppearance().sections,
     places: db.prepare('SELECT id, kind, name, address, lat, lng, time, description FROM places ORDER BY sort, id').all(),
     gites: gitesWithAvailability().map((g) => ({
       id: g.id, name: g.name, address: g.address, lat: g.lat, lng: g.lng, capacity: g.capacity,

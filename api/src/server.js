@@ -12,6 +12,8 @@ const adminRoutes = require('./routes/admin');
 const roomRoutes = require('./routes/rooms');
 const siteRoutes = require('./routes/site');
 const gameRoutes = require('./routes/games');
+const appearanceRoutes = require('./routes/appearance');
+const access = require('./access');
 const { HttpError } = require('./util');
 
 auth.initAdminPassword();
@@ -49,6 +51,10 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/admin', adminRoutes);
+// Site réservé aux invités (si activé) : les routes publiques demandent une session
+app.use('/api', access.publicRouter);
+app.use('/api', appearanceRoutes.publicRouter);
+app.use('/api', access.guard);
 app.use('/api', publicRoutes);
 app.use('/api', roomRoutes.publicRouter);
 app.use('/api', siteRoutes.publicRouter);

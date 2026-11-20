@@ -9,6 +9,8 @@ const roomRoutes = require('./rooms');
 const siteRoutes = require('./site');
 const gameRoutes = require('./games');
 const auth = require('../auth');
+const access = require('../access');
+const appearanceRoutes = require('./appearance');
 const { HttpError, str, int, num, oneOf, email, url, nameKey, rateLimit, toCsv, isValidTimezone } = require('../util');
 
 const router = express.Router();
@@ -19,6 +21,7 @@ router.post('/login', rateLimit('login', 10, 15 * 60_000), (req, res) => {
   if (!stored) throw new HttpError(503, "Aucun mot de passe administrateur n'est configuré (voir le README).");
   if (!auth.verifyPassword(str(req.body?.password, 200), stored)) throw new HttpError(401, 'Mot de passe incorrect.');
   auth.createSession(res, req);
+  access.createSiteSession(req, res); // les mariés voient aussi le site quand il est réservé aux invités
   res.json({ ok: true });
 });
 
@@ -29,7 +32,10 @@ router.post('/logout', (req, res) => {
 
 router.use(auth.requireAdmin);
 
-router.get('/me', (req, res) => res.json({ ok: true }));
+router.get('/me', (req, res) => {
+  if (!access.hasValidSession(req)) access.createSiteSession(req, res);
+  res.json({ ok: true });
+});
 
 /* ---------- Tableau de bord ---------- */
 router.get('/stats', (req, res) => {
@@ -356,5 +362,7 @@ router.put('/security/password', rateLimit('pwd', 10, 15 * 60_000), (req, res) =
 router.use(roomRoutes.adminRouter);
 router.use(siteRoutes.adminRouter);
 router.use(gameRoutes.adminRouter);
+router.use(access.adminRouter);
+router.use(appearanceRoutes.adminRouter);
 
 module.exports = router;

@@ -18,6 +18,10 @@ window.MM = (() => {
     });
     let data = null;
     try { data = await res.json(); } catch { /* réponse vide */ }
+    // Site réservé aux invités et session absente : page de connexion
+    if (res.status === 401 && data && data.access === 'required' && !location.pathname.startsWith('/admin')) {
+      location.href = '/acces/?r=' + encodeURIComponent(location.pathname);
+    }
     if (!res.ok) {
       const err = new Error((data && data.error) || `Erreur ${res.status}`);
       err.status = res.status;
@@ -33,46 +37,6 @@ window.MM = (() => {
     salle: { label: 'Réception', icon: '🥂' },
     autre: { label: 'Lieu', icon: '📍' },
   };
-
-  /* ---------- Couleurs du thème ---------- */
-  function hexToRgb(hex) {
-    const n = parseInt(hex.slice(1), 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  }
-  function luminance(hex) {
-    const [r, g, b] = hexToRgb(hex).map((v) => {
-      v /= 255;
-      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  }
-  /** Assombrit une couleur jusqu'à obtenir un contraste suffisant sur fond clair (WCAG AA ≥ 4,5:1, y compris sur le fond crème). */
-  function inkFor(hex) {
-    let [r, g, b] = hexToRgb(hex);
-    for (let i = 0; i < 20 && (1.05 / (luminance(toHex(r, g, b)) + 0.05)) < 5.5; i++) {
-      r *= 0.88; g *= 0.88; b *= 0.88;
-    }
-    return toHex(r, g, b);
-  }
-  function toHex(r, g, b) {
-    return '#' + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
-  }
-
-  /** Applique les couleurs du thème (choisies dans l'admin) aux variables CSS. */
-  function applyTheme(colors) {
-    const valid = (colors || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c));
-    if (!valid.length) return;
-    const root = document.documentElement.style;
-    const primary = valid[0];
-    const ink = inkFor(primary);
-    root.setProperty('--accent', ink);
-    root.setProperty('--accent-raw', primary);
-    root.setProperty('--on-accent', '#ffffff');
-    if (valid[1]) root.setProperty('--accent-2', valid[1]);
-    // Une couleur très claire de la palette sert de fond doux pour les sections alternées
-    const light = valid.find((c) => luminance(c) > 0.7);
-    if (light) root.setProperty('--bg-soft', light);
-  }
 
   /* ---------- Cartes Leaflet / OpenStreetMap ---------- */
   function makeMap(el, options = {}) {
@@ -155,5 +119,5 @@ window.MM = (() => {
     }
   }
 
-  return { esc, api, KINDS, applyTheme, loadAnalytics, renderLogo, makeMap, pinIcon, hasCoords, directionsUrl, formatDateLong, formatTime, formatDay };
+  return { esc, api, KINDS, loadAnalytics, renderLogo, makeMap, pinIcon, hasCoords, directionsUrl, formatDateLong, formatTime, formatDay };
 })();

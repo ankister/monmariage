@@ -43,14 +43,54 @@ server {
     # Tableaux d'honneur des jeux : chaque jeu appelle « api/scores » à côté de sa page
     rewrite ^/jeux/(retard|cavale)/api/scores$ /api/games/$1/scores last;
 
+    # --- Site réservé aux invités (activable dans l'admin, onglet Sécurité) ---
+    # Avant chaque page, Nginx demande à l'API si le visiteur a le droit de la voir.
+    # Sans session invité : redirection vers la page de connexion /acces/.
+    auth_request /_acces;
+    error_page 401 = @connexion;
+    location = /_acces {
+        internal;
+        auth_request off;
+        proxy_pass http://api:3000/api/access/check;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Host $http_host;
+        proxy_set_header Cookie $http_cookie;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+    }
+    location @connexion {
+        auth_request off;
+        return 302 /acces/?r=$uri;
+    }
+    # Toujours accessibles : page de connexion, styles et scripts communs (sans aucune donnée)
+    location ^~ /acces/ {
+        auth_request off;
+        expires -1;
+    }
+    location ^~ /css/ {
+        auth_request off;
+        expires -1;
+        etag on;
+    }
+    location ^~ /js/ {
+        auth_request off;
+        expires -1;
+        etag on;
+    }
+    location = /favicon.svg {
+        auth_request off;
+    }
+
     # Sonde de santé du conteneur
     location = /healthz {
+        auth_request off;
         access_log off;
         return 200 "ok\n";
     }
 
     # --- API ---
-    location /api/ {
+    location ^~ /api/ {
+        auth_request off; # l'API vérifie elle-même l'accès
         proxy_pass http://api:3000;
         proxy_http_version 1.1;
         # $http_host conserve le port (utile pour tester en http://IP:port sur le réseau local)
@@ -63,6 +103,7 @@ server {
     # --- Fichiers statiques ---
     # Bibliothèques et polices : cache long
     location ^~ /vendor/ {
+        auth_request off;
         expires 30d;
         access_log off;
     }
@@ -74,7 +115,9 @@ server {
         etag on;
     }
 
-    location /admin/ {
+    # Administration : protégée par son propre mot de passe
+    location ^~ /admin/ {
+        auth_request off;
         try_files $uri $uri/ /admin/index.html;
         expires -1;
     }

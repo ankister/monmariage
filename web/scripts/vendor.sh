@@ -7,11 +7,12 @@ NM="node_modules"
 
 mkdir -p "$OUT/leaflet" "$OUT/fonts"
 cp -r "$NM/leaflet/dist/leaflet.css" "$NM/leaflet/dist/leaflet.js" "$NM/leaflet/dist/images" "$OUT/leaflet/"
-for f in latin-400-normal latin-400-italic latin-600-normal; do
-  cp "$NM/@fontsource/cormorant-garamond/files/cormorant-garamond-$f.woff2" "$OUT/fonts/"
-done
-for f in latin-400-normal latin-700-normal; do
-  cp "$NM/@fontsource/lato/files/lato-$f.woff2" "$OUT/fonts/"
+# Polices du site (catalogue de l'onglet Apparence de l'admin) : graisses 400, 600, 700 et italique 400
+for dir in "$NM"/@fontsource/*; do
+  id="$(basename "$dir")"
+  for f in latin-400-normal latin-600-normal latin-700-normal latin-400-italic; do
+    if [ -f "$dir/files/$id-$f.woff2" ]; then cp "$dir/files/$id-$f.woff2" "$OUT/fonts/"; fi
+  done
 done
 # Polices de la page des jeux
 for f in latin-500-normal latin-600-normal latin-700-normal; do

@@ -52,7 +52,9 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
 **Côté invités** (`https://votre-domaine.fr`)
 - Compte à rebours en direct, date en toutes lettres, bouton « Ajouter à mon agenda » (.ics avec rappel J-7)
 - Programme (frise horaire) + carte OpenStreetMap des lieux (mairie, église, salle…) avec liens d'itinéraire
-- Thème : description, code vestimentaire, pastilles de couleurs ; **les couleurs du thème colorent le site**
+- Thème : description, code vestimentaire, pastilles de couleurs
+- **Apparence au choix** : 8 thèmes prêts à l'emploi (dont un sombre), couleurs, polices de chaque texte (22 polices hébergées localement), CSS personnalisé, ordre et affichage des blocs de la page d'accueil
+- **Site réservé aux invités** (option) : mot de passe commun demandé une fois par appareil (`/acces/`), lien direct `…/acces/?code=…` pour un QR code ; protège les pages, les jeux, les chambres et l'API
 - Menu présenté comme une carte de restaurant
 - Gîtes alentours : carte et fiches avec un bouton « Lien » (adresse saisie dans l'admin : page de réservation, site…)
 - Formulaire de réponse : présence, adultes/enfants, nombre de menus végétariens, allergies et intolérances.
@@ -83,7 +85,8 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
 - Contenu : date, textes, thème et couleurs, menu (étapes réordonnables), ouverture/fermeture des formulaires,
   **logo** (image PNG envoyée depuis l'admin, ou code HTML/CSS avec aperçu) affiché au-dessus de « Nous nous marions »,
   **statistiques de visite Umami** (adresse du script + identifiant du site, bouton de test)
-- Sécurité : code d'invitation, changement du mot de passe
+- Style : thèmes prédéfinis et thèmes personnels, couleurs avec contrôle de lisibilité, polices par texte, éditeur CSS, ordre des blocs, **aperçu en direct** (mobile / ordinateur)
+- Sécurité : accès au site par mot de passe invités (activable), code d'invitation, changement du mot de passe
 - Barre d'onglets en bas d'écran sur téléphone, barre latérale sur ordinateur
 
 > **Rapprochement des réponses** : si un invité répond avec un nom déjà présent dans la liste
@@ -336,7 +339,11 @@ location /api/admin/ {
 | Effacer les scores de test des jeux | **Contenu → Jeux → Tout effacer** (ou 🗑 pour un score) |
 | Masquer le bouton « Jeux » | **Contenu → Jeux → décocher l'option** |
 | Changer le lien d'un gîte | **Gîtes → toucher le gîte → Lien** |
-| Changer la date, le menu, les couleurs | **Contenu → Enregistrer** |
+| Changer la date, le menu | **Contenu → Enregistrer** |
+| Changer le thème, les couleurs, les polices | **Style → choisir un thème, ajuster → Enregistrer** |
+| Réordonner ou masquer un bloc de l'accueil | **Style → Blocs de la page d'accueil** (↑ ↓, case à cocher) |
+| Ajouter du CSS personnalisé | **Style → CSS personnalisé** |
+| Réserver le site aux invités | **Sécurité → Accès au site** (mot de passe + interrupteur) |
 | Fermer les réponses après la date limite | **Contenu → Formulaire de réponse** |
 | Autoriser des noms hors liste | **Contenu → Formulaire de réponse → décocher « Seuls les noms de la liste… »** |
 | Exiger un code (imprimé sur le faire-part) | **Sécurité → Code d'invitation** |
