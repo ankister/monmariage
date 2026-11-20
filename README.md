@@ -85,6 +85,7 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
 - Contenu : date, textes, thème et couleurs, menu (étapes réordonnables), ouverture/fermeture des formulaires,
   **logo** (image PNG envoyée depuis l'admin, ou code HTML/CSS avec aperçu) affiché au-dessus de « Nous nous marions »,
   **statistiques de visite Umami** (adresse du script + identifiant du site, bouton de test)
+- **Budget** : budget prévu, dépenses par catégorie (12 catégories proposées, ajout / modification / suppression / réordonnancement), montants prévu, réel et payé, échéances, **recettes des chambres sur place déduites du lieu de réception** (validées, et en option celles en attente), **export Excel** (.xlsx : synthèse avec formules, dépenses, chambres)
 - Style : thèmes prédéfinis et thèmes personnels, couleurs avec contrôle de lisibilité, polices par texte, éditeur CSS, ordre des blocs, **aperçu en direct** (mobile / ordinateur)
 - Sécurité : accès au site par mot de passe invités (activable), code d'invitation, changement du mot de passe
 - Barre d'onglets en bas d'écran sur téléphone, barre latérale sur ordinateur
@@ -343,6 +344,7 @@ location /api/admin/ {
 | Changer le thème, les couleurs, les polices | **Style → choisir un thème, ajuster → Enregistrer** |
 | Réordonner ou masquer un bloc de l'accueil | **Style → Blocs de la page d'accueil** (↑ ↓, case à cocher) |
 | Ajouter du CSS personnalisé | **Style → CSS personnalisé** |
+| Suivre le budget, exporter vers Excel | **Budget** (toucher une dépense pour la modifier ; ⬇ Exporter) |
 | Réserver le site aux invités | **Sécurité → Accès au site** (mot de passe + interrupteur) |
 | Fermer les réponses après la date limite | **Contenu → Formulaire de réponse** |
 | Autoriser des noms hors liste | **Contenu → Formulaire de réponse → décocher « Seuls les noms de la liste… »** |

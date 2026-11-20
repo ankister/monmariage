@@ -81,7 +81,7 @@ p { margin: 0 0 .75rem; }
 /* Onglets : barre fixe en bas sur mobile */
 .tabs {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-  display: grid; grid-template-columns: repeat(8, 1fr);
+  display: grid; grid-template-columns: repeat(9, 1fr);
   background: var(--surface); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -435,4 +435,56 @@ code { background: #f1ece3; padding: .05rem .3rem; border-radius: 4px; font-size
   .ap-layout .savebar #ap-dirty { display: none; }
   .ap-layout .savebar .actions { width: 100%; }
   .ap-layout .savebar .actions .btn { flex: 1; padding-inline: .6rem; }
+}
+
+/* ---------- Budget ---------- */
+.budget-stats .stat { text-align: left; }
+.budget-stats button.stat { cursor: pointer; font: inherit; color: inherit; }
+.budget-gauge { padding-block: .75rem; }
+.budget-gauge p { margin: 0; }
+.budget-rooms { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: .75rem 0; }
+.budget-rooms div { display: flex; flex-direction: column; gap: .1rem; background: var(--bg); border-radius: 10px; padding: .6rem .7rem; }
+.budget-rooms strong { font-size: 1.1rem; }
+.warn-text { color: var(--wait); font-weight: 700; }
+.budget-due { list-style: none; margin: 0; padding: 0; }
+.budget-due li { display: grid; grid-template-columns: 7.5rem 1fr auto; gap: .5rem; padding: .5rem 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.budget-due li:last-child { border-bottom: 0; }
+.budget-due li.late span:first-child { color: var(--no); font-weight: 700; }
+.budget-cats-head { margin: 1.5rem 0 .75rem; }
+.budget-cats-head h2 { margin: 0; }
+.budget-cats { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1rem; }
+.budget-cat { margin: 0; padding: 0; }
+.budget-cat > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  padding: .9rem 1rem; cursor: pointer; min-height: 56px; }
+.budget-cat > summary::-webkit-details-marker { display: none; }
+.budget-cat > summary::after { content: '▾'; color: var(--muted); transition: transform .2s; }
+.budget-cat[open] > summary::after { transform: rotate(180deg); }
+.budget-cat-name { font-weight: 700; flex: 1 1 50%; min-width: 0; }
+.budget-cat-sum { display: flex; flex-direction: column; align-items: flex-end; text-align: right; flex: 0 1 auto; max-width: 50%; }
+.budget-items { display: flex; flex-direction: column; gap: .4rem; padding: 0 1rem; }
+.budget-item { display: flex; flex-direction: column; gap: .4rem; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: .6rem .75rem; }
+.budget-item:hover { border-color: var(--accent); }
+.budget-item-main { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .5rem; }
+.budget-item-main .small { flex-basis: 100%; }
+.budget-item-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem; font-size: .85rem; }
+.budget-item-nums span { display: flex; flex-direction: column; }
+.budget-item-nums small { color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; }
+.budget-venue-net { display: flex; justify-content: space-between; padding: .3rem .75rem; font-size: .9rem; }
+.budget-venue-net.total { border-top: 1px dashed var(--line); font-weight: 700; }
+.budget-cat-actions { display: flex; align-items: center; gap: .4rem; padding: .75rem 1rem 1rem; }
+.budget-cat-actions .spacer { flex: 1; }
+.budget-cat-actions .icon-btn:disabled { opacity: .3; cursor: default; }
+.budget-cat-form { grid-template-columns: 5rem 1fr; }
+@media (min-width: 900px) {
+  .budget-stats { grid-template-columns: repeat(4, 1fr); }
+  .budget-item { flex-direction: row; align-items: center; justify-content: space-between; }
+  .budget-item-main .small { flex-basis: auto; }
+  .budget-item-nums { min-width: 26rem; text-align: right; }
+  .budget-item-nums span { align-items: flex-end; }
+}
+@media (max-width: 420px) {
+  .tabs button b { font-size: .54rem; letter-spacing: -.01em; }
+  .budget-due li { grid-template-columns: 1fr auto; }
+  .budget-due li span:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
 }
