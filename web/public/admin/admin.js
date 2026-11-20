@@ -604,9 +604,9 @@
         <h2>Statistiques de visite (Umami)</h2>
         <p class="muted small">Renseignez votre instance <strong>Umami</strong> pour suivre les visites du site et de la page « Dormir sur place »
           (l’administration n’est jamais suivie). Le suivi passe par le serveur du site : rien à modifier ailleurs.</p>
-        <label class="field">Adresse du script de suivi
-          <input name="umami_script_url" type="url" value="${esc(um.script_url)}" placeholder="https://stats.exemple.fr/script.js">
-          <small class="help">Dans Umami : Paramètres → Sites web → Modifier → Code de suivi, valeur de <code>src</code>.</small></label>
+        <label class="field">Code de suivi ou adresse du script
+          <input name="umami_script_url" type="text" value="${esc(um.script_url)}" placeholder="Collez ici le code de suivi Umami (<script …>) ou https://stats.exemple.fr/script.js" autocomplete="off" spellcheck="false">
+          <small class="help">Dans Umami : Paramètres → Sites web → Modifier → Code de suivi. Collez le code entier : l’adresse et l’identifiant sont extraits automatiquement.</small></label>
         <label class="field">Identifiant du site (Website ID)
           <input name="umami_website_id" value="${esc(um.website_id)}" placeholder="1a2b3c4d-1234-5678-9abc-1234567890ab" autocomplete="off" spellcheck="false">
           <small class="help">Valeur de <code>data-website-id</code> dans le même code.</small></label>
@@ -838,6 +838,20 @@
   }
   function setupUmami(form) {
     const status = $('#umami-status');
+    // Code de suivi collé en entier : on en extrait src et data-website-id
+    const scriptInput = form.elements.umami_script_url;
+    scriptInput.addEventListener('input', () => {
+      const v = scriptInput.value;
+      if (!/<script|data-website-id/i.test(v)) return;
+      const src = v.match(/src\s*=\s*["']([^"']+)["']/i);
+      const id = v.match(/data-website-id\s*=\s*["']([^"']+)["']/i);
+      if (src) scriptInput.value = src[1].trim();
+      if (id) form.elements.umami_website_id.value = id[1].trim();
+      if (!form.elements.umami_dashboard_url.value && src && id) {
+        try { form.elements.umami_dashboard_url.value = new URL('/websites/' + id[1].trim(), src[1].trim()).href; } catch { /* adresse invalide */ }
+      }
+      status.textContent = src && id ? 'Code reconnu : cliquez sur « Enregistrer et tester la connexion ».' : 'Code incomplet : vérifiez l’adresse et l’identifiant.';
+    });
     $('#umami-test').addEventListener('click', async () => {
       status.textContent = 'Test en cours…';
       try {
