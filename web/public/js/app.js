@@ -378,6 +378,8 @@
     setupRsvp(c, state.code_required);
     applyLayout(state.sections);
     stripeSections();
+    // Album photo : lien dans le menu à partir du jour du mariage
+    api('/album/status').then((a) => { if (a.open) $('#nav-album').hidden = false; }).catch(() => {});
 
     const contact = [c.contact_email && `<a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a>`,
       c.contact_phone && `<a href="tel:${esc(c.contact_phone.replace(/\s/g, ''))}">${esc(c.contact_phone)}</a>`].filter(Boolean);

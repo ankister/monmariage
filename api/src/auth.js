@@ -88,16 +88,20 @@ function destroyAllSessions() {
   db.prepare('DELETE FROM sessions').run();
 }
 
-function requireAdmin(req, res, next) {
+/** Le visiteur a-t-il une session d'administration valide ? */
+function isAdmin(req) {
   const token = readToken(req);
-  if (token) {
-    const row = db.prepare('SELECT expires_at FROM sessions WHERE token_hash = ?').get(sha256(token));
-    if (row && row.expires_at > Date.now()) return next();
-  }
+  if (!token) return false;
+  const row = db.prepare('SELECT expires_at FROM sessions WHERE token_hash = ?').get(sha256(token));
+  return !!row && row.expires_at > Date.now();
+}
+
+function requireAdmin(req, res, next) {
+  if (isAdmin(req)) return next();
   res.status(401).json({ error: 'Session expirée, merci de vous reconnecter.' });
 }
 
 module.exports = {
   hashPassword, verifyPassword, initAdminPassword, initInviteCode,
-  createSession, destroySession, destroyAllSessions, requireAdmin,
+  createSession, destroySession, destroyAllSessions, requireAdmin, isAdmin,
 };

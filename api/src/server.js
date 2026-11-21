@@ -15,6 +15,7 @@ const gameRoutes = require('./routes/games');
 const appearanceRoutes = require('./routes/appearance');
 const access = require('./access');
 const musicRoutes = require('./routes/music');
+const albumRoutes = require('./routes/album');
 const { HttpError } = require('./util');
 
 auth.initAdminPassword();
@@ -38,7 +39,8 @@ app.use((req, res, next) => {
   // Seul l'envoi de photos (admin) accepte un corps image ; tout le reste est en JSON
   const isPhotoUpload = /^\/api\/admin\/(rooms\/\d+\/photos|logo)$/.test(req.path) && req.is(['image/jpeg', 'image/png', 'image/webp']);
   const isFaviconUpload = req.path === '/api/admin/favicon' && req.is(['image/*', 'application/octet-stream']);
-  if ((req.method !== 'DELETE' || hasBody) && !isPhotoUpload && !isFaviconUpload && !req.is('application/json')) {
+  const isAlbumUpload = ['/api/album/upload', '/api/admin/album/test-upload'].includes(req.path) && req.is('application/octet-stream');
+  if ((req.method !== 'DELETE' || hasBody) && !isPhotoUpload && !isFaviconUpload && !isAlbumUpload && !req.is('application/json')) {
     return res.status(415).json({ error: 'Format de requête non supporté.' });
   }
   const origin = req.get('origin');
@@ -59,6 +61,7 @@ app.use('/api', appearanceRoutes.publicRouter);
 app.use('/api', access.guard);
 app.use('/api', publicRoutes);
 app.use('/api', musicRoutes.publicRouter);
+app.use('/api', albumRoutes.publicRouter);
 app.use('/api', roomRoutes.publicRouter);
 app.use('/api', siteRoutes.publicRouter);
 app.use('/api', gameRoutes.publicRouter);

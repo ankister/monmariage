@@ -86,6 +86,7 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
   **logo** (image PNG envoyée depuis l'admin, ou code HTML/CSS avec aperçu) affiché au-dessus de « Nous nous marions »,
   **statistiques de visite Umami** (adresse du script + identifiant du site, bouton de test)
 - **Musiques** : les invités proposent jusqu'à 3 chansons pour la piste de danse dans leur réponse (recherche, lien Spotify ou titre libre), avec écoute de l'extrait par le lecteur Spotify intégré ; l'onglet admin liste les propositions et, si le compte Spotify des mariés est connecté (application Spotify « Development Mode », propriétaire Premium), permet la recherche pour les invités et l'ajout direct à une playlist
+- **Album photo partagé** (`/album/`) : les invités envoient photos et vidéos depuis leur téléphone (sans compte, prénom facultatif), galerie commune actualisée en direct, visionneuse, **diaporama plein écran** pour un écran ou un vidéoprojecteur ; ouverture **à partir du jour J** (durée en jours) ou **à des dates choisies** ; avant l'ouverture, compte à rebours pour les invités et **mode test** pour les mariés (envois marqués « Test », jamais montrés aux invités) ; dans l'admin : **QR code** à imprimer (cartes de table A6, mot de passe du site inclus en option), modération facultative, masquage, suppression, **téléchargement ZIP**, et bouton **« Vérifier que tout fonctionne »** (stockage, envoi réel, gros fichiers à travers le proxy, https)
 - **Budget** : budget prévu, dépenses par catégorie (12 catégories proposées, ajout / modification / suppression / réordonnancement), montants prévu, réel et payé, échéances, **recettes des chambres sur place déduites du lieu de réception** (validées, et en option celles en attente), **export Excel** (.xlsx : synthèse avec formules, dépenses, chambres)
 - Style : favicon personnalisable (envoi d’une image PNG, ICO ou SVG), thèmes prédéfinis et thèmes personnels, couleurs avec contrôle de lisibilité, polices par texte, éditeur CSS, ordre des blocs, **aperçu en direct** (mobile / ordinateur)
 - Sécurité : accès au site par mot de passe invités (activable), code d'invitation, changement du mot de passe
@@ -295,8 +296,19 @@ Onglet **SSL**
 - ☑ Force SSL ☑ HTTP/2 Support ☑ HSTS Enabled
 - Acceptez les conditions, indiquez votre e-mail, **Save**.
 
-Onglet **Advanced** : rien d'obligatoire. NPM transmet déjà `Host`, `X-Forwarded-For` et
+Onglet **Advanced** : NPM transmet déjà `Host`, `X-Forwarded-For` et
 `X-Forwarded-Proto`, dont le site a besoin pour les cookies sécurisés et la limitation de débit.
+Pour l'**album photo**, autorisez les gros envois de vidéos (sinon NPM refuse les fichiers de plus
+d'environ 1 Mo à 100 Mo selon sa configuration) en ajoutant dans **Advanced** :
+
+```nginx
+client_max_body_size 2000m;
+proxy_request_buffering off;
+proxy_read_timeout 600s;
+proxy_send_timeout 600s;
+```
+
+Puis lancez **Album → Vérifier que tout fonctionne** depuis l'adresse publique (et depuis un téléphone en 4G).
 
 Facultatif — réserver l'admin au réseau local (ajouter dans **Advanced**) :
 
@@ -376,7 +388,8 @@ et le suivi n'est pas bloqué par les bloqueurs de publicité courants. L'admini
 ## 6. Sauvegardes
 
 Toutes les données tiennent dans `DATA_PATH` : `mariage.sqlite` (+ fichiers `-wal`/`-shm`)
-et le dossier `media/` qui contient les photos des chambres et le logo.
+et le dossier `media/` qui contient les photos des chambres, le logo et les photos et vidéos
+de l'album (`media/album/`, prévoyez l'espace disque : plusieurs Go le jour J).
 Incluez ce dossier dans vos sauvegardes habituelles (Backrest/restic, Appdata Backup…).
 
 Pour une copie garantie cohérente pendant que le site tourne :

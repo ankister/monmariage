@@ -93,6 +93,34 @@ server {
     }
 
     # --- API ---
+    # Album photo : envoi de photos et vidéos (gros fichiers, transmis en flux à l'API)
+    location = /api/album/upload {
+        auth_request off;
+        client_max_body_size 2100m;
+        proxy_request_buffering off;
+        proxy_pass http://api:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
+    # Vérification de l'album dans l'admin : test de la taille maximale acceptée
+    location = /api/admin/album/test-upload {
+        auth_request off;
+        client_max_body_size 2100m;
+        proxy_request_buffering off;
+        proxy_pass http://api:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
     location ^~ /api/ {
         auth_request off; # l'API vérifie elle-même l'accès
         proxy_pass http://api:3000;

@@ -366,5 +366,6 @@ router.use(access.adminRouter);
 router.use(appearanceRoutes.adminRouter);
 router.use(require('./budget'));
 router.use(require('./music').adminRouter);
+router.use(require('./album').adminRouter);
 
 module.exports = router;
