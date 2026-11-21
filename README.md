@@ -62,7 +62,7 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
   option désactivable dans Contenu) et une **question anti-robot** (addition, vérifiée par le serveur, sans service tiers)
   doit être résolue
 - Programme : mairie, église, **séance photos**, réception ou autre lieu
-- **Jeux** (`/jeux/`) : « … est en retard », « … en cavale » et **« Le combat des témoins »** (combat en relais témoins du marié contre témoins de la mariée, 1 ou 2 joueurs, musique originale) ; prénoms et témoins réglés dans `.env` : `PRENOM_MARIE`, `PRENOM_MARIEE`, `TEMOINS_MARIE`, `TEMOINS_MARIEE` (format `Prénom:H|F[:peau 1-6[:cheveux]]`) ; **tableaux d'honneur partagés** entre tous les invités
+- **Jeux** (`/jeux/`) : « … est en retard », « … en cavale » **« Le combat des témoins »** (combat en relais témoins du marié contre témoins de la mariée, 1 ou 2 joueurs, musique originale) et **« Livraison sous haute tension »** (conduite vue du ciel : livrer la pièce montée en échappant aux voitures des témoins) ; prénoms et témoins réglés dans `.env` : `PRENOM_MARIE`, `PRENOM_MARIEE`, `TEMOINS_MARIE`, `TEMOINS_MARIEE` (format `Prénom:H|F[:peau 1-6[:cheveux]]`) ; **tableaux d'honneur partagés** entre tous les invités
   (enregistrés par le serveur), bouton « Jeux » dans le menu et bouton de retour vers le site
 - **Questions fréquentes** (FAQ) en accordéon, entrée « FAQ » dans le menu ; masquée tant qu'aucune question n'a de réponse
 - **Page « Dormir sur place »** (`/dormir-sur-place/`) : plan interactif du lieu de réception

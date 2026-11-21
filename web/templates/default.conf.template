@@ -44,7 +44,7 @@ server {
     sub_filter '__TEMOINS_MARIE__' '${TEMOINS_MARIE}';
 
     # Tableaux d'honneur des jeux : chaque jeu appelle « api/scores » à côté de sa page
-    rewrite ^/jeux/(retard|cavale|temoins)/api/scores$ /api/games/$1/scores last;
+    rewrite ^/jeux/(retard|cavale|temoins|livraison)/api/scores$ /api/games/$1/scores last;
 
     # --- Site réservé aux invités (activable dans l'admin, onglet Sécurité) ---
     # Avant chaque page, Nginx demande à l'API si le visiteur a le droit de la voir.

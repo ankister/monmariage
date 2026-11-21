@@ -1,6 +1,7 @@
 /**
  * Tableaux d'honneur des mini-jeux (« En retard », « En cavale », « Le combat des témoins »).
  * Témoins : won = victoire, level = équipe jouée (1 = marié, 2 = mariée).
+ * Livraison : level = difficulté (0 tranquille, 1 normal, 2 témoins déchaînés).
  * Les jeux appellent « api/scores » relativement à leur page : Nginx renvoie
  * /jeux/<jeu>/api/scores vers /api/games/<jeu>/scores.
  * Format attendu par les jeux : tableau de { name, score, t, won | level }.
@@ -11,7 +12,7 @@ const express = require('express');
 const { db } = require('../db');
 const { HttpError, int, rateLimit } = require('../util');
 
-const GAMES = ['retard', 'cavale', 'temoins'];
+const GAMES = ['retard', 'cavale', 'temoins', 'livraison'];
 const TOP = 100;
 
 function gameParam(req) {
@@ -23,7 +24,7 @@ function board(game) {
   return db.prepare('SELECT name, score, won, level, t FROM game_scores WHERE game = ? ORDER BY score DESC, t ASC LIMIT ?')
     .all(game, TOP)
     .map((r) => (game === 'retard' ? { name: r.name, score: r.score, won: !!r.won, t: r.t }
-      : game === 'temoins' ? { name: r.name, score: r.score, won: !!r.won, level: r.level, t: r.t }
+      : game === 'temoins' || game === 'livraison' ? { name: r.name, score: r.score, won: !!r.won, level: r.level, t: r.t }
       : { name: r.name, score: r.score, level: r.level, t: r.t }));
 }
 

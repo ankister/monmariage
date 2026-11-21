@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Livraison sous haute tension</title>
+<link rel="stylesheet" href="/jeux/fonts.css">
+<style>
+/* VOICE: course-poursuite comique le jour des noces, rythme de film d'action en miniature
+   IDEA: une borne d'arcade de jeu de conduite vue du ciel, comme les premiers GTA, glissée dans la salle des jeux du mariage
+   PICTURE: la ville ensoleillée vue de haut, la camionnette du pâtissier et les voitures des témoins à ses trousses
+   COLOUR and TYPE: prune profonde, or et rose poudré (comme les autres jeux du site) ; Great Vibes + Fredoka
+   LAYOUT: titre modeste, borne large centrée, commandes tactiles dessous, règles puis réglages de test */
+:root{color-scheme:dark;--bg:#2b0e22;--gold:#e0b354;--blush:#f3c6cf;--ink:#fbeff2;--soft:#dcb6c7}
+:root[data-theme=light],:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 50% -10%,#5c1b47 0,var(--bg) 62%) fixed,var(--bg);color:var(--ink);font:16px/1.55 Fredoka,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(16px,3vw,32px) max(4vw,12px)}
+.top{text-align:center;padding-bottom:4px}
+h1{font:400 clamp(42px,7vw,64px)/1.05 'Great Vibes',cursive;margin:0;color:var(--blush);text-wrap:balance}
+.top p{margin:.3em auto 0;max-width:62ch;color:var(--soft)}
+.game{padding-top:10px}
+.cab{width:min(100%,1000px);margin:0 auto;background:linear-gradient(#4b1a3e,#33102a);border:2px solid var(--gold);border-radius:22px;padding:12px;box-shadow:0 22px 50px #0009,inset 0 0 0 6px #2b0e22}
+.stage{position:relative;margin:0 auto;width:min(100%,calc((100svh - 230px)*16/9));min-width:280px;aspect-ratio:16/9;border-radius:10px;overflow:hidden;touch-action:none;background:#3b3640;user-select:none;-webkit-user-select:none}
+.stage>canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ov{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;gap:12px;padding:16px;background:#1c0816e6;overflow:auto}
+.ov[hidden]{display:none}
+.ov h2{font:400 clamp(30px,5.5vw,52px)/1.05 'Great Vibes',cursive;color:var(--blush);margin:0;text-wrap:balance}
+.ov p{margin:0;max-width:50ch}
+.levels{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.levels label{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;border:1.5px solid #e0b35488;cursor:pointer;min-height:40px;font-size:15px}
+.levels input{accent-color:var(--gold);width:18px;height:18px}
+button{font:600 16px Fredoka,system-ui,sans-serif;min-height:44px;padding:0 22px;border-radius:999px;border:2px solid var(--gold);background:var(--gold);color:#2b0e22;cursor:pointer}
+button:focus-visible{outline:3px solid var(--blush);outline-offset:3px}
+.ghost{background:transparent;color:var(--gold)}
+.bar{display:flex;gap:10px;justify-content:center;padding-top:10px;flex-wrap:wrap}
+.bar button{background:transparent;color:var(--gold);min-height:40px;font-size:15px}
+.pad{display:none;justify-content:space-between;align-items:flex-end;gap:10px;padding-top:10px}
+.pad div{display:flex;gap:8px}
+.pad button{padding:0;width:68px;min-height:62px;border-radius:16px;background:#ffffff14;color:var(--blush);font-size:22px;touch-action:none;border-color:#e0b354aa}
+.pad button.on{background:#e0b35455}
+.pad .gas{width:78px}
+@media (pointer:coarse){.pad{display:flex}}
+.rules{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 28px;color:var(--soft);padding-top:22px}
+.rules p{margin:0}
+.rules b{color:var(--ink);font-weight:600}
+kbd{font:600 13px Fredoka,system-ui;border:1px solid #e0b35488;border-radius:6px;padding:0 5px;color:var(--ink)}
+.end-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 16px;font-size:14px;color:var(--soft)}
+.end-stats b{display:block;font-size:22px;color:var(--ink)}
+@media (max-width:600px){.end-stats b{font-size:18px}.ov{gap:8px}.stage{aspect-ratio:4/5;width:100%}}
+form.save{display:grid;gap:6px;justify-items:center;width:min(100%,340px)}
+form.save[hidden],#saveMsg:empty{display:none}
+form.save label{font-size:14px;color:var(--soft)}
+form.save .row{display:flex;gap:8px;width:100%}
+form.save input{flex:1;font:500 16px Fredoka,system-ui,sans-serif;min-height:44px;padding:0 14px;border-radius:999px;border:2px solid var(--blush);background:#fffaf6;color:#2b0e22}
+form.save input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+form.save .row button{padding:0 16px}
+#saveMsg{color:var(--gold);font-weight:600;margin:0}
+.board{max-width:1000px;margin:0 auto;padding-top:30px}
+.board h2{font:400 clamp(34px,5vw,46px)/1.05 'Great Vibes',cursive;color:var(--blush);margin:0}
+.board .note{margin:2px 0 14px;color:var(--soft);font-size:14px}
+.board ol{list-style:none;margin:0;padding:0;border-top:1px solid #e0b35455}
+.board li{display:grid;grid-template-columns:2.4em minmax(0,1fr) auto auto;gap:4px 14px;align-items:baseline;padding:10px 4px;border-bottom:1px solid #e0b35433}
+.board li.me{background:#e0b3541f}
+.board .rk{font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.board .nm{font-weight:600;overflow-wrap:anywhere}
+.board .st{font-size:13px;color:var(--soft);white-space:nowrap}
+.board .sc{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.board .empty{color:var(--soft);padding:14px 4px;display:block}
+/* intégration dans la page des jeux */
+.embed body{min-height:0;background:transparent}
+.embed .top{display:none}
+.embed .game{padding-top:6px}
+.embed .stage{width:min(100%,880px)}
+@media (max-width:600px){.embed .stage{width:100%}}
+</style>
+<script src="mode-integre.js"></script>
+</head>
+<!-- Prénoms et témoins injectés au démarrage du conteneur (variables PRENOM_* et TEMOINS_*) -->
+<body data-marie="__PRENOM_MARIE__" data-mariee="__PRENOM_MARIEE__" data-tm="__TEMOINS_MARIE__" data-tf="__TEMOINS_MARIEE__">
+
+<header class="band top">
+  <h1>Livraison sous haute tension</h1>
+  <p id="pitch">Le pâtissier est souffrant : c’est à toi de conduire la pièce montée jusqu’à la salle de réception. Les témoins ont parié qu’ils la voleraient avant le dessert…</p>
+</header>
+
+<main class="band game">
+  <div class="cab">
+    <div class="stage" id="stage">
+      <canvas id="cv" width="960" height="540" aria-label="Ville vue du ciel : course-poursuite"></canvas>
+      <div class="ov" id="menu">
+        <h2 id="menuTitle">Le gâteau doit arriver entier</h2>
+        <p id="menuText"></p>
+        <div class="levels" role="radiogroup" aria-label="Difficulté">
+          <label><input type="radio" name="lvl" value="0"> Tranquille</label>
+          <label><input type="radio" name="lvl" value="1" checked> Normal</label>
+          <label><input type="radio" name="lvl" value="2"> Témoins déchaînés</label>
+        </div>
+        <button id="start">Prendre le volant</button>
+      </div>
+      <div class="ov" id="pause" hidden>
+        <h2>Pause</h2>
+        <div class="bar"><button id="resume">Reprendre</button><button class="ghost" id="quit">Abandonner</button></div>
+      </div>
+      <div class="ov" id="end" hidden>
+        <h2 id="endTitle"></h2>
+        <p id="endText"></p>
+        <div class="end-stats" id="endStats"></div>
+        <form class="save" id="saveForm" hidden>
+          <label for="pseudo">Inscris ton nom au tableau d’honneur (<span id="scoreTxt"></span> points)</label>
+          <div class="row"><input id="pseudo" maxlength="20" autocomplete="nickname" required placeholder="Ton prénom"><button>Valider</button></div>
+        </form>
+        <p id="saveMsg"></p>
+        <div class="bar"><button id="again">Rejouer</button><button class="ghost" id="toMenu">Changer de difficulté</button></div>
+      </div>
+    </div>
+    <div class="pad" id="pad" aria-label="Commandes tactiles">
+      <div><button data-k="left" aria-label="Tourner à gauche">◀</button><button data-k="right" aria-label="Tourner à droite">▶</button></div>
+      <div><button data-k="nitro" aria-label="Turbo">🚀</button><button data-k="down" aria-label="Freiner, reculer">▼</button><button class="gas" data-k="up" aria-label="Accélérer">▲</button></div>
+    </div>
+    <div class="bar">
+      <button id="pauseBtn">Pause</button>
+      <button id="musicBtn" aria-pressed="true">Musique : oui</button>
+      <button id="soundBtn" aria-pressed="true">Bruitages : oui</button>
+    </div>
+  </div>
+
+  <section class="rules" aria-label="Règles">
+    <p><b>But.</b> Rejoins la salle de réception (flèche dorée, point doré sur la carte) avant la fin du temps, avec le gâteau le plus intact possible.</p>
+    <p><b>Conduite.</b> <kbd>↑</kbd>/<kbd>Z</kbd> accélérer, <kbd>↓</kbd>/<kbd>S</kbd> freiner ou reculer, <kbd>←</kbd> <kbd>→</kbd> / <kbd>Q</kbd> <kbd>D</kbd> tourner, <kbd>Espace</kbd> frein à main (dérapage), <kbd>Maj</kbd> turbo.</p>
+    <p><b>Les témoins.</b> Ils te foncent dessus et, si tu t’arrêtes près d’eux, ils piquent une part. Les chocs contre les murs abîment aussi le gâteau.</p>
+    <p><b>Bonus.</b> 🍰 glaçage (répare le gâteau), 🚀 turbo, ⏱ temps supplémentaire. Les parcs se traversent, le fleuve ne se franchit que par les ponts. Pause : <kbd>Échap</kbd>.</p>
+  </section>
+
+  <section class="board" aria-live="polite">
+    <h2>Tableau d’honneur</h2>
+    <p class="note" id="boardNote"></p>
+    <ol id="boardList"></ol>
+  </section>
+</main>
+<script src="jeu.js"></script>
+</body>
+</html>

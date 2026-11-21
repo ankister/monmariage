@@ -797,7 +797,7 @@
 
   /* ---------- Statistiques Umami ---------- */
   /* ---------- Tableaux d'honneur des jeux ---------- */
-  const GAME_NAMES = { retard: '__PRENOM_MARIE__ est en retard', cavale: '__PRENOM_MARIE__ en cavale', temoins: 'Le combat des témoins' };
+  const GAME_NAMES = { retard: '__PRENOM_MARIE__ est en retard', cavale: '__PRENOM_MARIE__ en cavale', temoins: 'Le combat des témoins', livraison: 'Livraison sous haute tension' };
   async function loadGameScores() {
     const box = $('#game-scores');
     if (!box) return;
@@ -809,7 +809,7 @@
           ${data[g].length ? `<button type="button" class="btn btn-ghost btn-small" data-reset="${g}">Tout effacer</button>` : ''}</div>
         ${data[g].length ? `<ol class="game-scores">${data[g].map((s) => `<li>
             <span><strong>${esc(s.name)}</strong> · ${s.score.toLocaleString('fr-FR')} pts
-            <small>${g === 'retard' ? (s.won ? 'à l’heure' : 'en retard') : g === 'temoins' ? `team ${s.level === 2 ? '__PRENOM_MARIEE__' : '__PRENOM_MARIE__'}${s.won ? ' · victoire' : ''}` : `niveau ${s.level}`} · ${fmtDateTime(s.created_at)}</small></span>
+            <small>${g === 'retard' ? (s.won ? 'à l’heure' : 'en retard') : g === 'temoins' ? `team ${s.level === 2 ? '__PRENOM_MARIEE__' : '__PRENOM_MARIE__'}${s.won ? ' · victoire' : ''}` : g === 'livraison' ? ['tranquille', 'normal', 'témoins déchaînés'][s.level] || '' : `niveau ${s.level}`} · ${fmtDateTime(s.created_at)}</small></span>
             <button type="button" class="icon-btn danger" data-del-score="${s.id}" aria-label="Supprimer le score de ${esc(s.name)}">🗑</button></li>`).join('')}</ol>`
           : '<p class="muted small">Aucun score pour l’instant.</p>'}
       </div>`).join('');
