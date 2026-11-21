@@ -40,6 +40,8 @@ services:
       # Prénoms affichés dans les jeux (les images n'en contiennent aucun)
       PRENOM_MARIE: ${PRENOM_MARIE:-Hugo}
       PRENOM_MARIEE: ${PRENOM_MARIEE:-Léa}
+      TEMOINS_MARIE: ${TEMOINS_MARIE:-}
+      TEMOINS_MARIEE: ${TEMOINS_MARIEE:-}
     ports:
       - "${WEB_PORT:-8095}:80"
     networks:

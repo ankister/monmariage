@@ -10,7 +10,9 @@ RUN sh scripts/vendor.sh /out
 FROM nginx:1.28-alpine
 # Prénoms affichés dans les jeux : valeurs par défaut fictives, à remplacer dans le fichier .env
 ENV PRENOM_MARIE=Hugo \
-    PRENOM_MARIEE=Léa
+    PRENOM_MARIEE=Léa \
+    TEMOINS_MARIE="" \
+    TEMOINS_MARIEE=""
 # Modèle de configuration : l'image nginx y insère les variables d'environnement au démarrage
 COPY templates /etc/nginx/templates
 COPY public /usr/share/nginx/html

@@ -1,7 +1,7 @@
 # Nginx du conteneur « web » : sert le site statique et relaie /api vers le conteneur « api ».
 # Nginx Proxy Manager (NPM) se place devant et gère le HTTPS.
 #
-# Modèle : au démarrage, l'image nginx remplace ${PRENOM_MARIE} et ${PRENOM_MARIEE} par les valeurs
+# Modèle : au démarrage, l'image nginx remplace ${PRENOM_MARIE}, ${PRENOM_MARIEE}, ${TEMOINS_MARIE} et ${TEMOINS_MARIEE} par les valeurs
 # des variables d'environnement (fichier .env). Les fichiers du site ne contiennent donc aucun prénom :
 # l'image peut être publiée sans données personnelles.
 
@@ -39,9 +39,12 @@ server {
     sub_filter_once off;
     sub_filter '__PRENOM_MARIEE__' '${PRENOM_MARIEE}';
     sub_filter '__PRENOM_MARIE__' '${PRENOM_MARIE}';
+    # Témoins du « combat des témoins » (format Prénom:H|F[:peau 1-6[:cheveux]], séparés par des virgules)
+    sub_filter '__TEMOINS_MARIEE__' '${TEMOINS_MARIEE}';
+    sub_filter '__TEMOINS_MARIE__' '${TEMOINS_MARIE}';
 
     # Tableaux d'honneur des jeux : chaque jeu appelle « api/scores » à côté de sa page
-    rewrite ^/jeux/(retard|cavale)/api/scores$ /api/games/$1/scores last;
+    rewrite ^/jeux/(retard|cavale|temoins)/api/scores$ /api/games/$1/scores last;
 
     # --- Site réservé aux invités (activable dans l'admin, onglet Sécurité) ---
     # Avant chaque page, Nginx demande à l'API si le visiteur a le droit de la voir.

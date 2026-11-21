@@ -2,7 +2,8 @@
 const $=id=>document.getElementById(id);
 const GAMES={
   retard:{title:'__PRENOM_MARIE__ est en retard',src:'retard/index.html#integre',api:'retard/api/scores',ls:'jeu-retard-scores',detail:e=>e.won?"À l'heure":'En retard'},
-  cavale:{title:'__PRENOM_MARIE__ en cavale',src:'cavale/index.html#integre',api:'cavale/api/scores',ls:'jeu-cavale-scores',detail:e=>e.level?'Niveau '+e.level:''}
+  cavale:{title:'__PRENOM_MARIE__ en cavale',src:'cavale/index.html#integre',api:'cavale/api/scores',ls:'jeu-cavale-scores',detail:e=>e.level?'Niveau '+e.level:''},
+  temoins:{title:'Le combat des témoins',src:'temoins/index.html#integre',api:'temoins/api/scores',ls:'jeu-temoins-scores',detail:e=>'Team '+(e.level===2?'__PRENOM_MARIEE__':'__PRENOM_MARIE__')+(e.won?' · victoire':'')}
 };
 const frame=$('frame');let current=null;
 
@@ -23,7 +24,7 @@ async function loadBoard(id){
     ol.append(li);
   });
 }
-const loadBoards=()=>{loadBoard('retard');loadBoard('cavale')};
+const loadBoards=()=>{loadBoard('retard');loadBoard('cavale');loadBoard('temoins')};
 
 function show(id){
   if(id&&GAMES[id]){
