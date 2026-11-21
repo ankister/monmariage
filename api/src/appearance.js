@@ -65,6 +65,8 @@ const COLOR_ROLES = [
 /** Blocs de la page d'accueil, dans l'ordre par défaut. */
 const SECTIONS = [
   { id: 'programme', label: 'Programme et lieux' },
+  { id: 'album', label: 'Album photo (encart)' },
+  { id: 'jeux', label: 'Jeux (encart)' },
   { id: 'theme', label: 'Thème' },
   { id: 'menu', label: 'Menu' },
   { id: 'hebergement', label: 'Logement' },
@@ -147,7 +149,7 @@ function sanitizeAppearance(input = {}) {
     const v = String(input.fonts?.[key] || '');
     f[key] = FONT_BY_ID[v] ? v : def.fonts[key];
   }
-  // Ordre des blocs : chaque bloc connu une seule fois ; les blocs oubliés sont ajoutés à la fin
+  // Ordre des blocs : chaque bloc connu une seule fois
   const seen = new Set();
   const sections = [];
   for (const s of Array.isArray(input.sections) ? input.sections : []) {
@@ -156,7 +158,17 @@ function sanitizeAppearance(input = {}) {
     seen.add(id);
     sections.push({ id, visible: s.visible !== false });
   }
-  for (const s of SECTIONS) if (!seen.has(s.id)) sections.push({ id: s.id, visible: true });
+  // Blocs absents (ex. nouveaux blocs) : insérés à leur place par défaut, après leur voisin précédent
+  SECTIONS.forEach((s, k) => {
+    if (seen.has(s.id)) return;
+    let at = 0;
+    for (let j = k - 1; j >= 0; j--) {
+      const idx = sections.findIndex((x) => x.id === SECTIONS[j].id);
+      if (idx >= 0) { at = idx + 1; break; }
+    }
+    sections.splice(at, 0, { id: s.id, visible: true });
+    seen.add(s.id);
+  });
   const css = String(input.css || '').replace(/\u0000/g, '');
   return {
     theme: ID.test(String(input.theme || '')) ? String(input.theme) : '',

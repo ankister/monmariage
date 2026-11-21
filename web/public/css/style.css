@@ -239,6 +239,54 @@ h3, h4 { font-family: var(--font-subtitles); }
 .op-cta { font-weight: 700; background: var(--accent); color: var(--on-accent); border-radius: 999px; padding: .6rem 1.1rem; }
 .sub-title { font-size: 1.5rem; margin-bottom: .25rem; }
 
+/* ---------- Encarts cliquables (album photo, jeux) ---------- */
+.section-feature { padding: 2.5rem 0; }
+.feature-card {
+  display: grid; grid-template-columns: 1fr; overflow: hidden; text-decoration: none; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+  max-width: 920px; margin: 0 auto; transition: transform .18s, box-shadow .18s;
+}
+.feature-card:hover, .feature-card:focus-visible { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(47, 42, 37, .13); }
+.feature-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.fc-art { display: block; background: color-mix(in srgb, var(--accent-2) 22%, var(--bg)); }
+.fc-art svg { display: block; width: 100%; height: 100%; max-height: 240px; }
+.fc-text { display: flex; flex-direction: column; align-items: flex-start; gap: .45rem; padding: 1.4rem 1.5rem 1.6rem; }
+.fc-kicker { font-size: .75rem; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.fc-text strong { font-family: var(--font-titles); font-weight: 400; font-size: clamp(1.7rem, 5vw, 2.2rem); line-height: 1.1; }
+.fc-text small { color: var(--muted); font-size: 1rem; }
+.fc-cta {
+  margin-top: .5rem; font-family: var(--font-buttons); font-weight: 700; background: var(--accent); color: var(--on-accent);
+  border-radius: 999px; padding: .65rem 1.25rem;
+}
+@media (min-width: 720px) {
+  .feature-card { grid-template-columns: 5fr 6fr; align-items: stretch; }
+  .fc-art svg { max-height: none; min-height: 220px; }
+  .fc-text { justify-content: center; padding: 2rem 2.25rem; }
+  #jeux .feature-card { grid-template-columns: 6fr 5fr; }
+  #jeux .fc-art { order: 2; }
+}
+/* Illustrations : couleurs tirées du thème */
+.fc-art svg { --il-a: var(--accent); --il-b: var(--accent-2); }
+.il-bg { fill: transparent; }
+.il-dot { fill: var(--il-b); opacity: .55; }
+.il-paper { fill: #fff; stroke: color-mix(in srgb, var(--ink) 12%, transparent); stroke-width: 1.5; filter: drop-shadow(0 4px 6px rgba(0,0,0,.12)); }
+.il-sky { fill: color-mix(in srgb, var(--il-a) 22%, #fff); }
+.il-sky2 { fill: color-mix(in srgb, var(--il-b) 30%, #fff); }
+.il-sun { fill: var(--il-b); }
+.il-hill { fill: var(--il-a); }
+.il-hill2 { fill: color-mix(in srgb, var(--il-a) 55%, #fff); }
+.il-heart { fill: #d9776f; }
+.il-line { fill: color-mix(in srgb, var(--ink) 25%, transparent); }
+.il-cam { fill: var(--ink); }
+.il-lens-o { fill: color-mix(in srgb, var(--ink) 55%, #fff); }
+.il-lens { fill: color-mix(in srgb, var(--il-a) 50%, #222); }
+.il-flash { fill: var(--il-b); }
+.il-star { fill: var(--il-b); }
+.il-pad { fill: var(--il-a); filter: drop-shadow(0 6px 8px rgba(0,0,0,.18)); }
+.il-pad-k { fill: color-mix(in srgb, var(--il-a) 35%, #111); }
+.il-b1 { fill: #e9c46a; } .il-b2 { fill: #e07a5f; } .il-b3 { fill: #81b29a; } .il-b4 { fill: #7aa5d6; }
+.il-pip { fill: var(--ink); }
+
 /* ---------- Formulaires ---------- */
 .form h3 { font-size: 1.6rem; }
 .field { display: flex; flex-direction: column; gap: .35rem; margin: 0 0 1rem; font-weight: 700; font-size: .92rem; border: 0; padding: 0; min-width: 0; }

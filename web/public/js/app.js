@@ -379,7 +379,22 @@
     applyLayout(state.sections);
     stripeSections();
     // Album photo : lien dans le menu à partir du jour du mariage
-    api('/album/status').then((a) => { if (a.open) $('#nav-album').hidden = false; }).catch(() => {});
+    api('/album/status').then((a) => {
+      if (a.open) $('#nav-album').hidden = false;
+      if (!a.enabled) return; // album désactivé : pas d'encart
+      const text = $('#album-card-text'), cta = $('#album-card-cta');
+      if (a.uploads_live) {
+        text.textContent = 'Ajoutez vos photos et vidéos de la journée et retrouvez celles de tous les invités.';
+        cta.textContent = 'Ajouter mes photos →';
+      } else if (a.live) {
+        text.textContent = 'Retrouvez toutes les photos et vidéos de la journée, prises par les invités.';
+        cta.textContent = 'Voir l’album →';
+      } else if (a.opens_at) {
+        text.textContent = `Le jour J, partagez ici vos photos et vidéos de la journée. Ouverture le ${formatDateLong(a.opens_at, state.content.timezone).toLowerCase()}.`;
+      }
+      $('#album').hidden = false;
+      stripeSections();
+    }).catch(() => {});
 
     const contact = [c.contact_email && `<a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a>`,
       c.contact_phone && `<a href="tel:${esc(c.contact_phone.replace(/\s/g, ''))}">${esc(c.contact_phone)}</a>`].filter(Boolean);
