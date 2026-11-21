@@ -127,6 +127,8 @@
                 </span></figcaption>
             </figure>`).join('')}</div>`
             : `<p class="muted">${items.length ? 'Rien dans ce filtre.' : 'Aucune photo pour l’instant. Le jour J, les envois des invités apparaîtront ici.'}</p>`}
+          ${items.length ? `<div class="aa-danger"><p class="muted small">Effacer toutes les photos et vidéos du serveur (invités et tests). Pensez à télécharger le ZIP avant.</p>
+            <button type="button" class="btn btn-danger btn-small" data-del-all>Supprimer tous les médias (${items.length})</button></div>` : ''}
         </section>`;
       updateQr();
     };
@@ -270,6 +272,13 @@
         if (t.closest('[data-del-tests]')) {
           if (!(await confirmBox('Supprimer les envois de test ?', 'Les photos et vidéos marquées « Test » seront effacées du serveur.'))) return;
           const r = await call('/admin/album/tests', { method: 'DELETE' }); data = r; render(); toast(`${r.removed} envoi(s) de test supprimé(s)`);
+        }
+        if (t.closest('[data-del-all]')) {
+          const n = data.items.length;
+          if (!(await confirmBox('Supprimer tous les médias ?', `Les ${n} photos et vidéos de l’album seront effacées du serveur, y compris celles des invités. Cette action est irréversible.`, { ok: 'Continuer' }))) return;
+          if (!(await confirmBox('Dernière vérification', 'Avez-vous téléchargé le ZIP ? Rien ne pourra être récupéré.', { typed: 'SUPPRIMER', ok: 'Tout supprimer' }))) return;
+          const r = await call('/admin/album/delete-all', { method: 'POST', body: { confirm: 'SUPPRIMER' } }); data = r; render(); toast(`${r.removed} média(s) supprimé(s)`);
+          return;
         }
         if (t.closest('[data-approve-all]')) { data = await call('/admin/album/approve-all', { method: 'POST', body: {} }); render(); toast('Tout est validé'); }
         if (it && t.closest('[data-approve]')) { data = await call(`/admin/album/${id}`, { method: 'PUT', body: { approved: true } }); render(); }

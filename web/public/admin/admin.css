@@ -235,7 +235,16 @@ p { margin: 0 0 .75rem; }
 }
 .spacer { flex: 1; }
 .hide-sm { display: none; }
-.modal-small { height: auto; max-width: min(420px, calc(100% - 2rem)); border-radius: var(--radius); margin: auto; }
+.modal.modal-small { /* à la taille de son contenu, centrée (height:auto l'étirait sur toute la hauteur) */
+  width: min(420px, calc(100% - 2rem)); max-width: min(420px, calc(100% - 2rem)); height: fit-content; max-height: calc(100% - 2rem);
+  border-radius: var(--radius); margin: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.modal-small .modal-inner { height: auto; }
+.modal-small .modal-body h2 { font-size: 1.4rem; margin: 0 0 .4rem; }
+.modal-small .modal-body p { margin: 0 0 .75rem; }
+.modal-small .field input { text-transform: uppercase; }
+.aa-danger { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+.aa-danger p { margin: 0; flex: 1; min-width: 220px; }
 .modal-small .modal-foot { padding-bottom: .75rem; }
 .picker-map { height: 260px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); margin: .3rem 0 .5rem; z-index: 0; }
 .coords .field { margin-bottom: .3rem; }

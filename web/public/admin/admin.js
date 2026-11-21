@@ -145,21 +145,31 @@
     }
   });
 
-  /** Boîte de confirmation (remplace window.confirm, plus lisible sur mobile). */
-  function confirmBox(title, text) {
+  /** Boîte de confirmation (remplace window.confirm, plus lisible sur mobile).
+   *  opts.typed : mot à recopier pour activer le bouton (double validation des actions graves). */
+  function confirmBox(title, text, opts = {}) {
     return new Promise((resolve) => {
       const d = document.createElement('dialog');
       d.className = 'modal modal-small';
-      d.innerHTML = `<div class="modal-inner"><div class="modal-body"><h2>${esc(title)}</h2><p class="muted">${esc(text || '')}</p></div>
-        <footer class="modal-foot"><span class="spacer"></span><button class="btn btn-ghost" data-r="0">Annuler</button>
-        <button class="btn btn-danger" data-r="1">Confirmer</button></footer></div>`;
+      const typed = opts.typed || '';
+      d.innerHTML = `<div class="modal-inner"><div class="modal-body"><h2>${esc(title)}</h2><p class="muted">${esc(text || '')}</p>
+        ${typed ? `<label class="field"><span>Pour confirmer, tapez <b>${esc(typed)}</b></span><input data-typed autocomplete="off" autocapitalize="characters" spellcheck="false"></label>` : ''}</div>
+        <footer class="modal-foot"><span class="spacer"></span><button type="button" class="btn btn-ghost" data-r="0">Annuler</button>
+        <button type="button" class="btn btn-danger" data-r="1" ${typed ? 'disabled' : ''}>${esc(opts.ok || 'Confirmer')}</button></footer></div>`;
       document.body.append(d);
+      const input = d.querySelector('[data-typed]'), okBtn = d.querySelector('[data-r="1"]');
+      const match = () => !typed || input.value.trim().toUpperCase() === typed.toUpperCase();
+      if (input) {
+        input.addEventListener('input', () => { okBtn.disabled = !match(); });
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (match()) d.close('1'); } });
+      }
       d.addEventListener('click', (e) => {
         const r = e.target.closest('[data-r]');
-        if (r) d.close(r.dataset.r);
+        if (r && !r.disabled) d.close(r.dataset.r);
       });
-      d.addEventListener('close', () => { resolve(d.returnValue === '1'); d.remove(); });
+      d.addEventListener('close', () => { resolve(d.returnValue === '1' && match()); d.remove(); });
       d.showModal();
+      if (input) input.focus();
     });
   }
 

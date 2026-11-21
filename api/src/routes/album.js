@@ -273,20 +273,29 @@ adminRouter.post('/album/approve-all', (req, res) => {
   res.json(adminState(req));
 });
 
-adminRouter.delete('/album/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM album_items WHERE id = ?').get(int(req.params.id, 1, 1e9));
-  if (!row) throw new HttpError(404, 'Élément introuvable.');
-  db.prepare('DELETE FROM album_items WHERE id = ?').run(row.id);
-  for (const f of [row.file, row.thumb]) if (f) fs.rm(path.join(DIR, f), { force: true }, () => {});
-  res.json(adminState(req));
-});
-
 /** Supprime tous les envois de test. */
 adminRouter.delete('/album/tests', (req, res) => {
   const rows = db.prepare('SELECT * FROM album_items WHERE is_test = 1').all();
   db.prepare('DELETE FROM album_items WHERE is_test = 1').run();
   for (const r of rows) for (const f of [r.file, r.thumb]) if (f) fs.rm(path.join(DIR, f), { force: true }, () => {});
   res.json({ ...adminState(req), removed: rows.length });
+});
+
+/** Supprime TOUS les médias (double validation : le corps doit contenir confirm = "SUPPRIMER"). */
+adminRouter.post('/album/delete-all', (req, res) => {
+  if (String(req.body?.confirm || '').trim().toUpperCase() !== 'SUPPRIMER') throw new HttpError(400, 'Confirmation manquante.');
+  const rows = db.prepare('SELECT file, thumb FROM album_items').all();
+  db.prepare('DELETE FROM album_items').run();
+  for (const r of rows) for (const f of [r.file, r.thumb]) if (f) fs.rm(path.join(DIR, f), { force: true }, () => {});
+  res.json({ ...adminState(req), removed: rows.length });
+});
+
+adminRouter.delete('/album/:id', (req, res) => {
+  const row = db.prepare('SELECT * FROM album_items WHERE id = ?').get(int(req.params.id, 1, 1e9));
+  if (!row) throw new HttpError(404, 'Élément introuvable.');
+  db.prepare('DELETE FROM album_items WHERE id = ?').run(row.id);
+  for (const f of [row.file, row.thumb]) if (f) fs.rm(path.join(DIR, f), { force: true }, () => {});
+  res.json(adminState(req));
 });
 
 /** Vérifications côté serveur : réglages, écriture sur le disque, espace libre. */
