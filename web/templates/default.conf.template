@@ -32,7 +32,8 @@ server {
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
     add_header X-Robots-Tag "noindex, nofollow" always;
     # Seules les tuiles OpenStreetMap sont chargées depuis l'extérieur
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; font-src 'self'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'" always;
+    # Spotify : pochettes (i.scdn.co, spotifycdn.com) et lecteur d'extraits intégré (open.spotify.com, chargé au clic)
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://i.scdn.co https://*.spotifycdn.com; font-src 'self'; connect-src 'self'; frame-src 'self' https://open.spotify.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'" always;
 
     # Prénoms des mariés insérés dans les pages et scripts des jeux (marqueurs __PRENOM_MARIE__ / __PRENOM_MARIEE__)
     sub_filter_types application/javascript;

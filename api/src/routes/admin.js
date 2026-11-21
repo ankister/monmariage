@@ -365,5 +365,6 @@ router.use(gameRoutes.adminRouter);
 router.use(access.adminRouter);
 router.use(appearanceRoutes.adminRouter);
 router.use(require('./budget'));
+router.use(require('./music').adminRouter);
 
 module.exports = router;

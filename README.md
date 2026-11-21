@@ -85,6 +85,7 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
 - Contenu : date, textes, thème et couleurs, menu (étapes réordonnables), ouverture/fermeture des formulaires,
   **logo** (image PNG envoyée depuis l'admin, ou code HTML/CSS avec aperçu) affiché au-dessus de « Nous nous marions »,
   **statistiques de visite Umami** (adresse du script + identifiant du site, bouton de test)
+- **Musiques** : les invités proposent jusqu'à 3 chansons pour la piste de danse dans leur réponse (recherche, lien Spotify ou titre libre), avec écoute de l'extrait par le lecteur Spotify intégré ; l'onglet admin liste les propositions et, si le compte Spotify des mariés est connecté (application Spotify « Development Mode », propriétaire Premium), permet la recherche pour les invités et l'ajout direct à une playlist
 - **Budget** : budget prévu, dépenses par catégorie (12 catégories proposées, ajout / modification / suppression / réordonnancement), montants prévu, réel et payé, échéances, **recettes des chambres sur place déduites du lieu de réception** (validées, et en option celles en attente), **export Excel** (.xlsx : synthèse avec formules, dépenses, chambres)
 - Style : thèmes prédéfinis et thèmes personnels, couleurs avec contrôle de lisibilité, polices par texte, éditeur CSS, ordre des blocs, **aperçu en direct** (mobile / ordinateur)
 - Sécurité : accès au site par mot de passe invités (activable), code d'invitation, changement du mot de passe

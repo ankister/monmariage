@@ -14,6 +14,7 @@ const siteRoutes = require('./routes/site');
 const gameRoutes = require('./routes/games');
 const appearanceRoutes = require('./routes/appearance');
 const access = require('./access');
+const musicRoutes = require('./routes/music');
 const { HttpError } = require('./util');
 
 auth.initAdminPassword();
@@ -56,6 +57,7 @@ app.use('/api', access.publicRouter);
 app.use('/api', appearanceRoutes.publicRouter);
 app.use('/api', access.guard);
 app.use('/api', publicRoutes);
+app.use('/api', musicRoutes.publicRouter);
 app.use('/api', roomRoutes.publicRouter);
 app.use('/api', siteRoutes.publicRouter);
 app.use('/api', gameRoutes.publicRouter);

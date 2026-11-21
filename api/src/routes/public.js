@@ -8,6 +8,7 @@ const { db, getContent, getPrivate, gitesWithAvailability } = require('../db');
 const { HttpError, str, int, email, nameKey, rateLimit, zonedToUtc } = require('../util');
 const { createCaptcha, verifyCaptcha } = require('../captcha');
 const { getAppearance } = require('../appearance');
+const { parseSongs, saveSongs } = require('./music');
 
 const router = express.Router();
 
@@ -83,16 +84,20 @@ router.post('/rsvp', rateLimit('rsvp', 10, 10 * 60_000), (req, res) => {
     throw new HttpError(404, 'Nous ne trouvons pas ce nom dans notre liste d’invités. Indiquez-le tel qu’il figure sur votre faire-part (ex. « Famille Martin »), ou contactez-nous.');
   }
 
+  const songs = attending ? parseSongs(b.songs) : [];
+  let guestId;
   if (existing) {
+    guestId = existing.id;
     db.prepare(`UPDATE guests SET email = COALESCE(NULLIF(@email, ''), email), phone = COALESCE(NULLIF(@phone, ''), phone),
                 status = @status, adults = @adults, children = @children, veggie = @veggie, diet = @diet,
                 updated_at = datetime('now'), responded_at = datetime('now') WHERE id = @id`)
       .run({ ...data, id: existing.id });
   } else {
-    db.prepare(`INSERT INTO guests (name, name_key, email, phone, status, adults, children, veggie, diet, source, responded_at)
+    guestId = db.prepare(`INSERT INTO guests (name, name_key, email, phone, status, adults, children, veggie, diet, source, responded_at)
                 VALUES (@name, @name_key, @email, @phone, @status, @adults, @children, @veggie, @diet, 'web', datetime('now'))`)
-      .run(data);
+      .run(data).lastInsertRowid;
   }
+  saveSongs(guestId, (existing && existing.name) || name, songs);
   res.json({
     ok: true,
     message: attending

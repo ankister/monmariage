@@ -196,6 +196,7 @@
     form.elements.adults.addEventListener('input', updateVeggie);
     form.elements.children.addEventListener('input', updateVeggie);
     updateVeggie();
+    const songs = setupSongs(form);
     $('#captcha-new').addEventListener('click', () => loadCaptcha(form));
     if (content.options.rsvp_open) loadCaptcha(form);
 
@@ -213,6 +214,7 @@
         const code = form.elements.code.value;
         form.reset();
         form.elements.code.value = code;
+        songs.reset();
         toggle();
         updateVeggie();
       } catch (err) {
@@ -223,6 +225,95 @@
         loadCaptcha(form); // une question ne sert qu'une fois
       }
     });
+  }
+
+  /* ---------- Chansons proposées pour la piste de danse ---------- */
+  function setupSongs(form) {
+    const list = $('#song-list'), q = $('#song-q'), results = $('#song-results'), hidden = form.elements.songs;
+    const MAX = 3;
+    let chosen = [], canSearch = false, timer = null, seq = 0, options = [];
+    api('/music/config').then((c) => { canSearch = !!c.search; }).catch(() => {});
+
+    const sync = () => {
+      hidden.value = JSON.stringify(chosen.map(({ title, artist, spotify_id: id, image }) => ({ title, artist, spotify_id: id, image })));
+      q.disabled = chosen.length >= MAX;
+      q.placeholder = chosen.length >= MAX ? 'Merci pour vos 3 chansons !' : 'Titre, artiste ou lien Spotify';
+    };
+    const cover = (s) => (s.image ? `<img src="${esc(s.image)}" alt="" width="48" height="48" loading="lazy">` : '<span class="song-cover" aria-hidden="true">♪</span>');
+    const draw = () => {
+      list.innerHTML = chosen.map((s, i) => `
+        <li class="song">
+          <div class="song-row">
+            ${cover(s)}
+            <span class="song-txt"><strong>${esc(s.title || 'Titre Spotify')}</strong>${s.artist ? `<span>${esc(s.artist)}</span>` : ''}</span>
+            ${s.spotify_id ? `<button type="button" class="song-btn" data-play="${i}" aria-expanded="${!!s.open}" aria-label="${s.open ? 'Masquer' : 'Écouter'} l’extrait de ${esc(s.title || 'ce titre')}">${s.open ? '■' : '▶'}</button>` : ''}
+            <button type="button" class="song-btn" data-del="${i}" aria-label="Retirer ${esc(s.title || 'ce titre')}">✕</button>
+          </div>
+          ${s.open ? `<iframe class="song-player" title="Extrait sur Spotify : ${esc(s.title)}" src="https://open.spotify.com/embed/track/${esc(s.spotify_id)}?utm_source=generator&amp;theme=0" height="80" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>` : ''}
+        </li>`).join('');
+      sync();
+    };
+    const close = () => { results.hidden = true; results.innerHTML = ''; options = []; q.removeAttribute('aria-activedescendant'); };
+    const add = (s) => {
+      if (chosen.length >= MAX) return;
+      if (s.spotify_id && chosen.some((c) => c.spotify_id === s.spotify_id)) { close(); q.value = ''; return; }
+      chosen.push(s); q.value = ''; close(); draw(); q.focus();
+    };
+    const showOptions = (opts) => {
+      options = opts;
+      results.innerHTML = opts.map((o, i) => `<li role="option" id="song-opt-${i}" data-opt="${i}" class="${o.free ? 'free' : ''}">
+        ${o.free ? '<span class="song-cover" aria-hidden="true">＋</span>' : cover(o)}
+        <span class="song-txt"><strong>${esc(o.free ? `Ajouter « ${o.title} »` : o.title)}</strong><span>${esc(o.free ? 'sans lien Spotify' : o.artist)}</span></span></li>`).join('');
+      results.hidden = !opts.length;
+    };
+    const SPOTIFY_LINK = /(open\.spotify\.com\/(intl-[a-z-]+\/)?track\/|spotify:track:)[A-Za-z0-9]{22}/;
+    q.addEventListener('input', () => {
+      clearTimeout(timer);
+      const v = q.value.trim(), mine = ++seq;
+      if (v.length < 2) { close(); return; }
+      timer = setTimeout(async () => {
+        if (SPOTIFY_LINK.test(v)) {
+          try {
+            const t = await api(`/music/lookup?url=${encodeURIComponent(v)}`);
+            if (mine === seq) add({ title: t.title, artist: t.artist, spotify_id: t.id, image: t.image });
+          } catch (err) {
+            if (mine !== seq) return;
+            options = [];
+            results.innerHTML = `<li class="song-msg">${esc(err.message)}</li>`;
+            results.hidden = false;
+          }
+          return;
+        }
+        let found = [];
+        if (canSearch) { try { found = await api(`/music/search?q=${encodeURIComponent(v)}`); } catch { found = []; } }
+        if (mine !== seq) return;
+        showOptions([...found.map((t) => ({ title: t.title, artist: t.artist, spotify_id: t.id, image: t.image })), { free: true, title: v }]);
+      }, canSearch ? 300 : 150);
+    });
+    let active = -1;
+    q.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); const o = options[Math.max(0, active)]; if (o) add(o.free ? { title: o.title, artist: '', spotify_id: '', image: '' } : o); else if (q.value.trim().length >= 2) add({ title: q.value.trim(), artist: '', spotify_id: '', image: '' }); active = -1; return; }
+      if (e.key === 'Escape') { close(); return; }
+      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && options.length) {
+        e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+        $$('[role=option]', results).forEach((li, i) => li.setAttribute('aria-selected', i === active));
+        q.setAttribute('aria-activedescendant', `song-opt-${active}`);
+      }
+    });
+    results.addEventListener('mousedown', (e) => e.preventDefault()); // garder le focus dans le champ
+    results.addEventListener('click', (e) => {
+      const li = e.target.closest('[data-opt]'); if (!li) return;
+      const o = options[+li.dataset.opt];
+      add(o.free ? { title: o.title, artist: '', spotify_id: '', image: '' } : o);
+    });
+    q.addEventListener('blur', () => setTimeout(close, 150));
+    list.addEventListener('click', (e) => {
+      const play = e.target.closest('[data-play]'), del = e.target.closest('[data-del]');
+      if (play) { const s = chosen[+play.dataset.play]; s.open = !s.open; draw(); }
+      if (del) { chosen.splice(+del.dataset.del, 1); draw(); q.focus(); }
+    });
+    sync();
+    return { reset() { chosen = []; draw(); close(); } };
   }
 
   /* ---------- Ordre et affichage des blocs (réglés dans l'admin, onglet Apparence) ---------- */
