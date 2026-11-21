@@ -93,6 +93,9 @@ de toute façon pour respecter l'exigence « facile à prendre en main » ; l'in
 - Sécurité : accès au site par mot de passe invités (activable), code d'invitation, changement du mot de passe
 - Barre d'onglets en bas d'écran sur téléphone, barre latérale sur ordinateur
 
+> **Préremplissage** : quand un invité tape son nom (et le code d'invitation s'il y en a un), le formulaire reprend
+> le nombre d'adultes et d'enfants prévu pour lui dans la liste des invités ; il peut le modifier.
+>
 > **Rapprochement des réponses** : si un invité répond avec un nom déjà présent dans la liste
 > (accents et majuscules ignorés) ou le même e-mail, sa fiche est mise à jour au lieu d'être dupliquée.
 > Ajoutez donc votre liste d'invités avec les noms tels qu'ils figurent sur les faire-part.

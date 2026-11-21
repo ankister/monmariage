@@ -79,7 +79,7 @@
     }
     const playlistForm = () => `<form class="playlist-form" id="pl-form">
         <p class="small">Choisissez la playlist où ajouter les chansons :</p>
-        <div class="actions"><button type="button" class="btn btn-primary btn-small" data-create-playlist>Créer « Mariage – piste de danse »</button></div>
+        <div class="actions"><button type="button" class="btn btn-primary btn-small" data-create-playlist>Créer « Mariage – propositions des invités »</button></div>
         <label class="field">…ou collez le lien d’une de vos playlists
           <span class="copy-line"><input name="url" placeholder="https://open.spotify.com/playlist/…" autocomplete="off"><button class="btn btn-ghost btn-small" type="submit">Utiliser</button></span></label>
       </form>`;
@@ -161,7 +161,7 @@
           if (!(await confirmBox('Déconnecter Spotify ?', 'Les propositions sont conservées. Les invités ne pourront plus chercher de titre, seulement coller un lien.'))) return;
           data = await call('/admin/music/spotify/disconnect', { method: 'POST', body: {} }); render();
         } else if (t.closest('[data-create-playlist]')) {
-          data = await call('/admin/music/playlist', { method: 'POST', body: { name: 'Mariage – piste de danse' } }); render(); toast('Playlist créée');
+          data = await call('/admin/music/playlist', { method: 'POST', body: { name: 'Mariage – propositions des invités' } }); render(); toast('Playlist créée');
         } else if (t.closest('[data-change-playlist]')) {
           data.spotify.playlist = null; render();
         } else if (t.closest('[data-add-all]')) {

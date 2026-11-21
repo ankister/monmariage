@@ -249,7 +249,7 @@ adminRouter.post('/music/playlist', async (req, res) => {
     const p = await spotify(`/playlists/${m[1]}?fields=id,name`);
     Object.assign(c, getCfg(), { playlist_id: p.id, playlist_name: p.name });
   } else {
-    const name = str(req.body?.name, 100) || 'Mariage – piste de danse';
+    const name = str(req.body?.name, 100) || 'Mariage – propositions des invités';
     const p = await spotify('/me/playlists', { method: 'POST', body: JSON.stringify({ name, public: false, description: 'Chansons proposées par nos invités' }) });
     Object.assign(c, getCfg(), { playlist_id: p.id, playlist_name: p.name });
   }

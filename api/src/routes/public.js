@@ -54,6 +54,20 @@ router.get('/content', (req, res) => {
   });
 });
 
+/** Préremplit le formulaire : nombre d'adultes et d'enfants prévus pour ce nom dans la liste des invités.
+ *  Ne renvoie que ces deux nombres, et seulement avec le bon code d'invitation s'il y en a un. */
+router.post('/rsvp/lookup', rateLimit('rsvp-lookup', 40, 10 * 60_000), (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const b = req.body || {};
+  const expected = (getPrivate('invite_code') || '').trim();
+  if (expected && str(b.code, 100).toLowerCase() !== expected.toLowerCase()) return res.json({ found: false });
+  const name = str(b.name, 150);
+  const g = name.length >= 2 ? findGuest(name) : null;
+  const row = g && db.prepare('SELECT adults, children FROM guests WHERE id = ?').get(g.id);
+  if (!row || row.adults + row.children === 0) return res.json({ found: false });
+  res.json({ found: true, adults: row.adults, children: row.children });
+});
+
 router.post('/rsvp', rateLimit('rsvp', 10, 10 * 60_000), (req, res) => {
   const b = req.body || {};
   antiSpam(b);

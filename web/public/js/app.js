@@ -196,6 +196,34 @@
     form.elements.adults.addEventListener('input', updateVeggie);
     form.elements.children.addEventListener('input', updateVeggie);
     updateVeggie();
+
+    // Nombre d'adultes et d'enfants prévus dans la liste des invités (réglés dans l'admin) : préremplis d'après le nom,
+    // tant que l'invité n'a pas modifié ces champs lui-même
+    let countsTouched = false, lookupTimer = 0, lookupSeq = 0;
+    const note = $('#rsvp-prefill');
+    const markTouched = (e) => { if (e.isTrusted) countsTouched = true; };
+    form.elements.adults.addEventListener('input', markTouched);
+    form.elements.children.addEventListener('input', markTouched);
+    const lookup = async () => {
+      const name = form.elements.name.value.trim();
+      const seq = ++lookupSeq;
+      if (name.length < 2 || countsTouched) return;
+      try {
+        const r = await api('/rsvp/lookup', { method: 'POST', body: { name, code: form.elements.code?.value || '' } });
+        if (seq !== lookupSeq || countsTouched) return;
+        if (!r.found) { note.hidden = true; return; }
+        form.elements.adults.value = r.adults;
+        form.elements.children.value = r.children;
+        updateVeggie();
+        const pl = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
+        note.textContent = `D’après notre liste : ${pl(r.adults, 'adulte')}${r.children ? ` et ${pl(r.children, 'enfant')}` : ''}. Modifiez si besoin.`;
+        note.hidden = false;
+      } catch { /* préremplissage facultatif */ }
+    };
+    const scheduleLookup = () => { clearTimeout(lookupTimer); lookupTimer = setTimeout(lookup, 500); };
+    form.elements.name.addEventListener('input', scheduleLookup);
+    form.elements.name.addEventListener('change', lookup);
+    form.elements.code?.addEventListener('change', lookup);
     const songs = setupSongs(form);
     $('#captcha-new').addEventListener('click', () => loadCaptcha(form));
     if (content.options.rsvp_open) loadCaptcha(form);
@@ -215,6 +243,7 @@
         form.reset();
         form.elements.code.value = code;
         songs.reset();
+        countsTouched = false; note.hidden = true;
         toggle();
         updateVeggie();
       } catch (err) {
