@@ -1,5 +1,5 @@
 /**
- * Réglages du site : logo et statistiques de visite Umami.
+ * Réglages du site : logo, favicon et statistiques de visite Umami.
  *
  * Umami : le script et les envois de statistiques passent par notre propre domaine
  * (/api/stats/…), relayés vers votre instance Umami. Avantages : aucune modification
@@ -96,6 +96,39 @@ publicRouter.get('/media/site/:file', (req, res) => {
   });
 });
 
+
+/* =========================================================
+   Favicon (icône de l'onglet) personnalisé
+   ========================================================= */
+const FAVICON_TYPES = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', ico: 'image/x-icon', svg: 'image/svg+xml' };
+function faviconType(buf) {
+  const t = imageType(buf);
+  if (t) return t;
+  if (buf.length > 4 && buf[0] === 0 && buf[1] === 0 && buf[2] === 1 && buf[3] === 0) return 'ico';
+  const head = buf.subarray(0, 1000).toString('utf8').replace(/^\uFEFF/, '').trimStart();
+  if (/^(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE svg[^>]*>\s*)?<svg[\s>]/i.test(head)) return 'svg';
+  return null;
+}
+function getFavicon() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'favicon'").get();
+  try { return row ? JSON.parse(row.value) : null; } catch { return null; }
+}
+function setFavicon(v) {
+  if (v) db.prepare("INSERT INTO settings (key, value) VALUES ('favicon', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify(v));
+  else db.prepare("DELETE FROM settings WHERE key = 'favicon'").run();
+}
+
+/** Icône de l'onglet : celle envoyée dans l'admin, sinon l'icône par défaut du site. */
+publicRouter.get('/favicon', (req, res) => {
+  const f = getFavicon();
+  if (!f || !/^favicon-[a-f0-9]{16}\.(png|jpg|webp|ico|svg)$/.test(f.file)) return res.redirect(302, '/favicon.svg');
+  res.set('Cache-Control', 'no-cache');
+  res.type(FAVICON_TYPES[f.file.split('.').pop()]);
+  // Un SVG ne doit jamais pouvoir exécuter de script, même ouvert directement
+  res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+  res.sendFile(path.join(SITE_MEDIA, f.file), (err) => { if (err && !res.headersSent) res.redirect(302, '/favicon.svg'); });
+});
+
 /* =========================================================
    Routes d'administration
    ========================================================= */
@@ -159,6 +192,32 @@ adminRouter.delete('/logo', (req, res) => {
   setContent(content);
   if (old) fs.rm(path.join(SITE_MEDIA, old), { force: true }, () => {});
   res.json({ ok: true });
+});
+
+
+adminRouter.get('/favicon', (req, res) => {
+  const f = getFavicon();
+  res.json({ custom: !!f, url: '/api/favicon', updated: f ? f.updated : null });
+});
+
+/** Envoi du favicon : PNG, ICO, SVG, WebP ou JPEG (1 Mo maximum). */
+adminRouter.post('/favicon', express.raw({ type: () => true, limit: '1mb' }), (req, res) => {
+  const buf = req.body;
+  const ext = Buffer.isBuffer(buf) && buf.length ? faviconType(buf) : null;
+  if (!ext) throw new HttpError(400, 'Format non reconnu : envoyez une image PNG (carrée, 512 × 512 px conseillé), ICO ou SVG.');
+  const filename = `favicon-${crypto.randomBytes(8).toString('hex')}.${ext}`;
+  fs.writeFileSync(path.join(SITE_MEDIA, filename), buf);
+  const old = getFavicon();
+  setFavicon({ file: filename, updated: Date.now() });
+  if (old?.file) fs.rm(path.join(SITE_MEDIA, old.file), { force: true }, () => {});
+  res.json({ ok: true, custom: true, url: '/api/favicon' });
+});
+
+adminRouter.delete('/favicon', (req, res) => {
+  const old = getFavicon();
+  setFavicon(null);
+  if (old?.file) fs.rm(path.join(SITE_MEDIA, old.file), { force: true }, () => {});
+  res.json({ ok: true, custom: false });
 });
 
 module.exports = { publicRouter, adminRouter, getUmami, umamiEnabled };

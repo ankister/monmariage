@@ -54,6 +54,24 @@
             <div class="theme-grid" id="theme-grid"></div>
           </section>
 
+          <section class="panel" id="fav-panel">
+            <h2>Icône de l’onglet (favicon)</h2>
+            <p class="muted small">Petite image affichée dans l’onglet du navigateur et dans les favoris. Image carrée conseillée
+              (PNG de 512 × 512 px, ICO ou SVG, 1 Mo maximum). Elle est enregistrée dès l’envoi.</p>
+            <div class="fav-row">
+              <div class="fav-preview" aria-hidden="true">
+                <span class="fav-tab"><img id="fav-img" src="/api/favicon" alt="" width="16" height="16"><span>Notre mariage</span></span>
+                <img id="fav-big" src="/api/favicon" alt="" width="64" height="64">
+              </div>
+              <div class="fav-actions">
+                <label class="btn btn-ghost btn-small fav-upload">Choisir une image…
+                  <input type="file" id="fav-file" accept="image/png,image/svg+xml,image/x-icon,image/vnd.microsoft.icon,.ico,image/webp,image/jpeg"></label>
+                <button type="button" class="btn btn-ghost btn-small" id="fav-reset" hidden>Revenir à l’icône par défaut</button>
+                <p class="small muted" id="fav-status" role="status"></p>
+              </div>
+            </div>
+          </section>
+
           <section class="panel">
             <h2>Couleurs</h2>
             <div class="ap-colors" id="ap-colors"></div>
@@ -355,6 +373,36 @@
     });
 
     window.addEventListener('beforeunload', (e) => { if (dirty && document.body.contains(form)) e.preventDefault(); });
+
+    /* ---------- Favicon ---------- */
+    const favStatus = $('#fav-status');
+    const refreshFav = (custom) => {
+      const src = `/api/favicon?v=${Date.now()}`;
+      $('#fav-img').src = src; $('#fav-big').src = src;
+      $('#fav-reset').hidden = !custom;
+      // L'onglet de l'administration suit aussi le changement
+      document.querySelectorAll('link[rel~="icon"]').forEach((l) => { l.href = src; });
+      try { frame.contentDocument?.querySelectorAll('link[rel~="icon"]').forEach((l) => { l.href = src; }); } catch { /* aperçu pas encore chargé */ }
+    };
+    call('/admin/favicon').then((f) => { $('#fav-reset').hidden = !f.custom; favStatus.textContent = f.custom ? 'Icône personnalisée.' : 'Icône par défaut du site.'; }).catch(() => {});
+    $('#fav-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      if (file.size > 1024 * 1024) { toast('Image trop lourde : 1 Mo maximum.', 'error'); return; }
+      favStatus.textContent = 'Envoi…';
+      try {
+        const type = file.type || (/\.ico$/i.test(file.name) ? 'image/x-icon' : /\.svg$/i.test(file.name) ? 'image/svg+xml' : 'application/octet-stream');
+        const r = await fetch('/api/admin/favicon', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': type }, body: file });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || `Erreur ${r.status}`);
+        refreshFav(true); favStatus.textContent = 'Icône personnalisée.'; toast('Favicon mis à jour');
+      } catch (err) { favStatus.textContent = ''; toast(err.message, 'error'); }
+    });
+    $('#fav-reset').addEventListener('click', async () => {
+      try { await call('/admin/favicon', { method: 'DELETE' }); refreshFav(false); favStatus.textContent = 'Icône par défaut du site.'; toast('Icône par défaut rétablie'); }
+      catch (err) { toast(err.message, 'error'); }
+    });
 
     drawThemes();
     drawColors();

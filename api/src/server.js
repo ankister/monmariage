@@ -37,7 +37,8 @@ app.use((req, res, next) => {
   const hasBody = Number(req.get('content-length') || 0) > 0 || req.get('transfer-encoding');
   // Seul l'envoi de photos (admin) accepte un corps image ; tout le reste est en JSON
   const isPhotoUpload = /^\/api\/admin\/(rooms\/\d+\/photos|logo)$/.test(req.path) && req.is(['image/jpeg', 'image/png', 'image/webp']);
-  if ((req.method !== 'DELETE' || hasBody) && !isPhotoUpload && !req.is('application/json')) {
+  const isFaviconUpload = req.path === '/api/admin/favicon' && req.is(['image/*', 'application/octet-stream']);
+  if ((req.method !== 'DELETE' || hasBody) && !isPhotoUpload && !isFaviconUpload && !req.is('application/json')) {
     return res.status(415).json({ error: 'Format de requête non supporté.' });
   }
   const origin = req.get('origin');
