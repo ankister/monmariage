@@ -346,20 +346,26 @@
   }
 
   /* ---------- Ordre et affichage des blocs (réglés dans l'admin, onglet Apparence) ---------- */
-  function applyLayout(sections) {
+  function applyLayout(sections, nav) {
     const main = $('#contenu');
     const navList = $('.topnav ul');
-    const jeux = $('#nav-jeux');
     (sections || []).forEach((s) => {
       const el = document.getElementById(s.id);
       if (!el || el.parentElement !== main) return;
       main.append(el); // déplacé à la suite, dans l'ordre choisi
       el.toggleAttribute('data-off', !s.visible);
-      const link = $(`a[href="#${s.id}"]`, navList)?.parentElement;
-      if (link) { navList.insertBefore(link, jeux); link.toggleAttribute('data-off', !s.visible); }
+    });
+    // Barre de menu : ordre et liens choisis dans l'admin ; un lien vers un bloc masqué est masqué aussi
+    const sectionOff = new Set((sections || []).filter((s) => !s.visible).map((s) => s.id));
+    (nav || []).forEach((n) => {
+      const li = $(`[data-nav="${n.id}"]`, navList);
+      if (!li) return;
+      navList.append(li);
+      const toSection = $('a', li)?.getAttribute('href')?.startsWith('#');
+      li.toggleAttribute('data-off', !n.visible || (toSection && sectionOff.has(n.id)));
     });
     // Formulaire de réponse masqué : on retire aussi les boutons qui y mènent
-    const rsvpOff = (sections || []).some((s) => s.id === 'rsvp' && !s.visible);
+    const rsvpOff = sectionOff.has('rsvp');
     $$('a[href="#rsvp"]').forEach((a) => a.toggleAttribute('data-off', rsvpOff));
   }
 
@@ -405,7 +411,7 @@
     }
     $('#hebergement').hidden = !state.gites.length && !c.onsite;
     setupRsvp(c, state.code_required);
-    applyLayout(state.sections);
+    applyLayout(state.sections, state.nav);
     stripeSections();
     // Album photo : lien dans le menu à partir du jour du mariage
     api('/album/status').then((a) => {

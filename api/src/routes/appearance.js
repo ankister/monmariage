@@ -40,6 +40,7 @@ adminRouter.get('/appearance', (req, res) => {
     font_roles: A.FONT_ROLES,
     color_roles: A.COLOR_ROLES,
     sections: A.SECTIONS,
+    nav_items: A.NAV_ITEMS,
   });
 });
 

@@ -45,6 +45,7 @@ router.get('/content', (req, res) => {
     content: { ...content, date_utc: start ? start.toISOString() : null },
     code_required: !!(getPrivate('invite_code') || '').trim(),
     sections: getAppearance().sections,
+    nav: getAppearance().nav,
     places: db.prepare('SELECT id, kind, name, address, lat, lng, time, description FROM places ORDER BY sort, id').all(),
     gites: gitesWithAvailability().map((g) => ({
       id: g.id, name: g.name, address: g.address, lat: g.lat, lng: g.lng, capacity: g.capacity,

@@ -74,6 +74,40 @@ const SECTIONS = [
   { id: 'rsvp', label: 'Formulaire de réponse' },
 ];
 
+/** Liens de la barre de menu (le bouton « Répondre » reste toujours à la fin). */
+const NAV_ITEMS = [
+  { id: 'programme', label: 'Programme' },
+  { id: 'theme', label: 'Thème' },
+  { id: 'menu', label: 'Menu' },
+  { id: 'hebergement', label: 'Logement' },
+  { id: 'faq', label: 'FAQ' },
+  { id: 'album', label: 'Album photo (affiché quand l’album est ouvert)' },
+  { id: 'jeux', label: 'Jeux' },
+];
+
+/** Liste ordonnée [{id, visible}] : chaque élément connu une seule fois, les absents insérés à leur place par défaut. */
+function orderList(input, defs) {
+  const seen = new Set();
+  const list = [];
+  for (const s of Array.isArray(input) ? input : []) {
+    const id = String(s?.id || '');
+    if (!defs.some((x) => x.id === id) || seen.has(id)) continue;
+    seen.add(id);
+    list.push({ id, visible: s.visible !== false });
+  }
+  defs.forEach((d, k) => {
+    if (seen.has(d.id)) return;
+    let at = 0;
+    for (let j = k - 1; j >= 0; j--) {
+      const idx = list.findIndex((x) => x.id === defs[j].id);
+      if (idx >= 0) { at = idx + 1; break; }
+    }
+    list.splice(at, 0, { id: d.id, visible: true });
+    seen.add(d.id);
+  });
+  return list;
+}
+
 const fonts = (couple, titles, subtitles, deco, body, nav = body, buttons = body) => ({ couple, titles, subtitles, deco, body, nav, buttons });
 
 /* ---------- Thèmes prédéfinis ---------- */
@@ -133,6 +167,7 @@ function defaultAppearance() {
     fonts: { ...p.fonts },
     css: '',
     sections: SECTIONS.map((s) => ({ id: s.id, visible: true })),
+    nav: NAV_ITEMS.map((s) => ({ id: s.id, visible: true })),
   };
 }
 
@@ -149,26 +184,9 @@ function sanitizeAppearance(input = {}) {
     const v = String(input.fonts?.[key] || '');
     f[key] = FONT_BY_ID[v] ? v : def.fonts[key];
   }
-  // Ordre des blocs : chaque bloc connu une seule fois
-  const seen = new Set();
-  const sections = [];
-  for (const s of Array.isArray(input.sections) ? input.sections : []) {
-    const id = String(s?.id || '');
-    if (!SECTIONS.some((x) => x.id === id) || seen.has(id)) continue;
-    seen.add(id);
-    sections.push({ id, visible: s.visible !== false });
-  }
-  // Blocs absents (ex. nouveaux blocs) : insérés à leur place par défaut, après leur voisin précédent
-  SECTIONS.forEach((s, k) => {
-    if (seen.has(s.id)) return;
-    let at = 0;
-    for (let j = k - 1; j >= 0; j--) {
-      const idx = sections.findIndex((x) => x.id === SECTIONS[j].id);
-      if (idx >= 0) { at = idx + 1; break; }
-    }
-    sections.splice(at, 0, { id: s.id, visible: true });
-    seen.add(s.id);
-  });
+  // Ordre des blocs de la page et des liens du menu
+  const sections = orderList(input.sections, SECTIONS);
+  const nav = orderList(input.nav, NAV_ITEMS);
   const css = String(input.css || '').replace(/\u0000/g, '');
   return {
     theme: ID.test(String(input.theme || '')) ? String(input.theme) : '',
@@ -176,6 +194,7 @@ function sanitizeAppearance(input = {}) {
     fonts: f,
     css: css.slice(0, CSS_MAX),
     sections,
+    nav,
   };
 }
 
@@ -257,7 +276,7 @@ function appearanceCss(a = getAppearance()) {
 const allFontsCss = () => FONTS.map((f) => fontFaces(f.id)).join('\n');
 
 module.exports = {
-  FONTS, FONT_ROLES, COLOR_ROLES, SECTIONS, PRESETS,
+  FONTS, FONT_ROLES, COLOR_ROLES, SECTIONS, NAV_ITEMS, PRESETS,
   defaultAppearance, sanitizeAppearance, getAppearance, setAppearance, getCustomThemes, setCustomThemes,
   appearanceCss, allFontsCss, contrast,
 };

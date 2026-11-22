@@ -26,13 +26,15 @@
 
   async function appearanceView() {
     const [data, content] = await Promise.all([call('/admin/appearance'), call('/admin/content')]);
-    const { presets, fonts, font_roles: fontRoles, color_roles: colorRoles, sections: sectionDefs } = data;
+    const { presets, fonts, font_roles: fontRoles, color_roles: colorRoles, sections: sectionDefs, nav_items: navDefs = [] } = data;
     let customThemes = data.custom_themes;
     // Copie de travail : modifiée par le formulaire, enregistrée avec le bouton
     const cur = structuredClone(data.appearance);
     const fontById = Object.fromEntries(fonts.map((f) => [f.id, f]));
     const family = (id) => (fontById[id] ? `'${fontById[id].family}'` : 'inherit');
     const sectionLabel = Object.fromEntries(sectionDefs.map((s) => [s.id, s.label]));
+    const navLabel = Object.fromEntries(navDefs.map((s) => [s.id, s.label]));
+    if (!Array.isArray(cur.nav)) cur.nav = navDefs.map((n) => ({ id: n.id, visible: true }));
     const samples = { couple: content.couple || 'Léa & Hugo' };
 
     const fontOptions = (selected) => {
@@ -86,8 +88,15 @@
 
           <section class="panel">
             <h2>Blocs de la page d’accueil</h2>
-            <p class="muted small">Ordre d’affichage sur la page et dans le menu. Décochez un bloc pour le masquer.</p>
+            <p class="muted small">Ordre d’affichage sur la page. Décochez un bloc pour le masquer (son lien disparaît aussi du menu).</p>
             <ol class="section-order" id="ap-sections"></ol>
+          </section>
+
+          <section class="panel">
+            <h2>Barre de menu</h2>
+            <p class="muted small">Ordre des liens dans le menu, indépendant de celui des blocs. Décochez un lien pour le retirer du menu
+              (le bloc reste sur la page). Le bouton « Répondre » reste toujours à la fin.</p>
+            <ol class="section-order" id="ap-nav"></ol>
           </section>
 
           <section class="panel">
@@ -232,40 +241,46 @@
       markDirty();
     });
 
-    /* ---------- Ordre des blocs ---------- */
-    function drawSections() {
-      const n = cur.sections.length;
-      $('#ap-sections').innerHTML = cur.sections.map((s, i) => `
-        <li class="section-item ${s.visible ? '' : 'off'}" data-i="${i}">
-          <label class="section-check"><input type="checkbox" data-visible ${s.visible ? 'checked' : ''}>
-            <span>${esc(sectionLabel[s.id] || s.id)}</span></label>
-          <span class="section-moves">
-            <button type="button" class="icon-btn" data-move="-1" ${i === 0 ? 'disabled' : ''} aria-label="Monter « ${esc(sectionLabel[s.id])} »">↑</button>
-            <button type="button" class="icon-btn" data-move="1" ${i === n - 1 ? 'disabled' : ''} aria-label="Descendre « ${esc(sectionLabel[s.id])} »">↓</button>
-          </span>
-        </li>`).join('');
+    /* ---------- Ordre des blocs et des liens du menu ---------- */
+    function orderList(box, key, labels, onToggle) {
+      const draw = () => {
+        const list = cur[key], n = list.length;
+        box.innerHTML = list.map((s, i) => `
+          <li class="section-item ${s.visible ? '' : 'off'}" data-i="${i}">
+            <label class="section-check"><input type="checkbox" data-visible ${s.visible ? 'checked' : ''}>
+              <span>${esc(labels[s.id] || s.id)}</span></label>
+            <span class="section-moves">
+              <button type="button" class="icon-btn" data-move="-1" ${i === 0 ? 'disabled' : ''} aria-label="Monter « ${esc(labels[s.id])} »">↑</button>
+              <button type="button" class="icon-btn" data-move="1" ${i === n - 1 ? 'disabled' : ''} aria-label="Descendre « ${esc(labels[s.id])} »">↓</button>
+            </span>
+          </li>`).join('');
+      };
+      box.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-move]');
+        if (!btn) return;
+        const list = cur[key];
+        const i = +btn.closest('[data-i]').dataset.i;
+        const j = i + +btn.dataset.move;
+        if (j < 0 || j >= list.length) return;
+        [list[i], list[j]] = [list[j], list[i]];
+        draw();
+        $(`[data-i="${j}"] [data-move="${btn.dataset.move}"]`, box)?.focus();
+        markDirty();
+      });
+      box.addEventListener('change', (e) => {
+        if (!e.target.matches('[data-visible]')) return;
+        const i = +e.target.closest('[data-i]').dataset.i;
+        cur[key][i].visible = e.target.checked;
+        e.target.closest('li').classList.toggle('off', !e.target.checked);
+        if (onToggle) onToggle(cur[key][i]);
+        markDirty();
+      });
+      return draw;
     }
-    $('#ap-sections').addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-move]');
-      if (!btn) return;
-      const i = +btn.closest('[data-i]').dataset.i;
-      const j = i + +btn.dataset.move;
-      if (j < 0 || j >= cur.sections.length) return;
-      [cur.sections[i], cur.sections[j]] = [cur.sections[j], cur.sections[i]];
-      drawSections();
-      $(`[data-i="${j}"] [data-move="${btn.dataset.move}"]`)?.focus();
-      markDirty();
+    const drawSections = orderList($('#ap-sections'), 'sections', sectionLabel, (s) => {
+      if (s.id === 'rsvp' && !s.visible) toast('Formulaire de réponse masqué : les invités ne pourront plus répondre en ligne.', 'error');
     });
-    $('#ap-sections').addEventListener('change', (e) => {
-      if (!e.target.matches('[data-visible]')) return;
-      const i = +e.target.closest('[data-i]').dataset.i;
-      cur.sections[i].visible = e.target.checked;
-      e.target.closest('li').classList.toggle('off', !e.target.checked);
-      if (cur.sections[i].id === 'rsvp' && !e.target.checked) {
-        toast('Formulaire de réponse masqué : les invités ne pourront plus répondre en ligne.', 'error');
-      }
-      markDirty();
-    });
+    const drawNav = orderList($('#ap-nav'), 'nav', navLabel);
 
     /* ---------- CSS personnalisé ---------- */
     const cssBox = form.elements.css;
@@ -315,7 +330,6 @@
       // Ordre et affichage des blocs
       const main = doc.getElementById('contenu');
       const navList = doc.querySelector('.topnav ul');
-      const jeux = doc.getElementById('nav-jeux');
       if (!main) return;
       const shown = [];
       cur.sections.forEach((s) => {
@@ -323,9 +337,15 @@
         if (!el || el.parentElement !== main) return;
         main.append(el);
         el.toggleAttribute('data-off', !s.visible);
-        const li = navList?.querySelector(`a[href="#${s.id}"]`)?.parentElement;
-        if (li && jeux) { navList.insertBefore(li, jeux); li.toggleAttribute('data-off', !s.visible); }
         if (s.visible && !el.hidden) shown.push(el);
+      });
+      const sectionOff = new Set(cur.sections.filter((s) => !s.visible).map((s) => s.id));
+      (cur.nav || []).forEach((n) => {
+        const li = navList?.querySelector(`[data-nav="${n.id}"]`);
+        if (!li) return;
+        navList.append(li);
+        const toSection = li.querySelector('a')?.getAttribute('href')?.startsWith('#');
+        li.toggleAttribute('data-off', !n.visible || (toSection && sectionOff.has(n.id)));
       });
       shown.forEach((el, i) => el.classList.toggle('section-soft', i % 2 === 1));
     }
@@ -408,6 +428,7 @@
     drawColors();
     drawFonts();
     drawSections();
+    drawNav();
     updateCssCount();
   }
 
