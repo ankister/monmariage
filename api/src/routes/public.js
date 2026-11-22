@@ -46,7 +46,8 @@ router.get('/content', (req, res) => {
     code_required: !!(getPrivate('invite_code') || '').trim(),
     sections: getAppearance().sections,
     nav: getAppearance().nav,
-    places: db.prepare('SELECT id, kind, name, address, lat, lng, time, description FROM places ORDER BY sort, id').all(),
+    places: db.prepare('SELECT id, kind, name, address, lat, lng, time, description, parking_link FROM places ORDER BY sort, id').all(),
+    parking_count: db.prepare('SELECT COUNT(*) AS n FROM parkings').get().n,
     gites: gitesWithAvailability().map((g) => ({
       id: g.id, name: g.name, address: g.address, lat: g.lat, lng: g.lng, capacity: g.capacity,
       price: g.price, contact: g.contact, url: g.url, description: g.description,

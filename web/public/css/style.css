@@ -386,3 +386,4 @@ fieldset.field legend { padding: 0; margin-bottom: .35rem; }
 .song-results li.free .song-cover { font-size: 1.1rem; }
 .song-results .song-msg { cursor: default; color: var(--error); font-size: .88rem; }
 .prefill-note { margin: -.4rem 0 1rem; color: var(--accent); font-weight: 700; }
+.link-parking { display: block; }

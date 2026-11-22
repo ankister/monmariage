@@ -53,6 +53,7 @@
           ${p.address ? `<p class="muted">${esc(p.address)}</p>` : ''}
           ${p.description ? `<p class="pre">${esc(p.description)}</p>` : ''}
           <a class="link-btn" href="${esc(directionsUrl(p))}" target="_blank" rel="noopener">Itinéraire →</a>
+          ${p.parking_link && state.parking_count ? '<a class="link-btn link-parking" href="/stationnement/">🅿️ Où se garer ? →</a>' : ''}
         </div>
       </li>`;
     }).join('');

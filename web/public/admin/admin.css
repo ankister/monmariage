@@ -628,3 +628,7 @@ code { background: #f1ece3; padding: .05rem .3rem; border-radius: 4px; font-size
 .tpl-preview { width: 100%; height: 460px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .form-status.ok { color: var(--ok); font-weight: 700; }
 .tpl-vars .chips { flex-wrap: wrap; }
+.pk-admin-head { margin-top: 2rem; }
+.pk-admin-head h2 { margin: 0; }
+.pk-row-icon { background: #2f5d8a; color: #fff; font-weight: 800; border-radius: 10px; display: grid; place-items: center; width: 40px; height: 40px; font-size: 1.2rem; flex: none; }
+.pk-row-icon.is-pmr { background: #1565c0; }

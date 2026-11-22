@@ -166,19 +166,19 @@ function placeFrom(b) {
   return {
     kind: oneOf(b.kind, ['mairie', 'eglise', 'photos', 'salle', 'autre'], 'autre'), name, address: str(b.address, 300),
     lat: num(b.lat, -90, 90), lng: num(b.lng, -180, 180), time: str(b.time, 50), description: str(b.description, 1000),
-    sort: Number.isFinite(+b.sort) ? +b.sort : 0,
+    sort: Number.isFinite(+b.sort) ? +b.sort : 0, parking_link: b.parking_link ? 1 : 0,
   };
 }
 
 router.get('/places', (req, res) => res.json(db.prepare('SELECT * FROM places ORDER BY sort, id').all()));
 router.post('/places', (req, res) => {
-  const info = db.prepare(`INSERT INTO places (kind, name, address, lat, lng, time, description, sort)
-    VALUES (@kind, @name, @address, @lat, @lng, @time, @description, @sort)`).run(placeFrom(req.body || {}));
+  const info = db.prepare(`INSERT INTO places (kind, name, address, lat, lng, time, description, sort, parking_link)
+    VALUES (@kind, @name, @address, @lat, @lng, @time, @description, @sort, @parking_link)`).run(placeFrom(req.body || {}));
   res.json({ id: info.lastInsertRowid });
 });
 router.put('/places/:id', (req, res) => {
   db.prepare(`UPDATE places SET kind=@kind, name=@name, address=@address, lat=@lat, lng=@lng, time=@time,
-              description=@description, sort=@sort WHERE id=@id`).run({ ...placeFrom(req.body || {}), id: int(req.params.id, 1, 1e9) });
+              description=@description, sort=@sort, parking_link=@parking_link WHERE id=@id`).run({ ...placeFrom(req.body || {}), id: int(req.params.id, 1, 1e9) });
   res.json({ ok: true });
 });
 router.delete('/places/:id', (req, res) => {
@@ -370,5 +370,6 @@ router.use(appearanceRoutes.adminRouter);
 router.use(require('./budget'));
 router.use(require('./music').adminRouter);
 router.use(require('./album').adminRouter);
+router.use(require('./parking').adminRouter);
 
 module.exports = router;

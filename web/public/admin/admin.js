@@ -471,8 +471,44 @@
     { name: 'address', label: 'Adresse', full: true },
     { name: 'description', label: 'Description', type: 'textarea', full: true },
     { name: 'sort', label: 'Ordre dans le programme', type: 'number', default: 0, help: 'Les plus petits nombres apparaissent en premier.' },
+    { name: 'parking_link', label: 'Afficher le lien « 🅿️ Où se garer ? » sous l’itinéraire', type: 'checkbox', full: true },
     { type: 'map', label: 'Position sur la carte' },
   ];
+
+  /* Stationnements autour de la mairie et de l'église (page « Où se garer ? ») */
+  const parkingFields = [
+    { name: 'kind', label: 'Type', type: 'select', options: [
+      { value: 'parking', label: '🅿️ Parking / zone de stationnement' },
+      { value: 'pmr', label: '♿ Place(s) PMR isolée(s)' },
+    ] },
+    { name: 'fee', label: 'Tarif', type: 'select', options: [
+      { value: '', label: 'Non précisé' }, { value: 'free', label: 'Gratuit' }, { value: 'paid', label: 'Payant' },
+    ] },
+    { name: 'name', label: 'Nom', required: true, full: true, placeholder: 'ex. Parking de la place …' },
+    { name: 'address', label: 'Adresse', full: true },
+    { name: 'spots', label: 'Nombre de places', type: 'number', min: 0, max: 100000, help: 'Facultatif.' },
+    { name: 'pmr_spots', label: 'Dont places PMR ♿', type: 'number', min: 0, max: 10000, default: 0 },
+    { name: 'description', label: 'Infos utiles', type: 'textarea', full: true, placeholder: 'Horaires, accès, hauteur maximale, gratuit le samedi…' },
+    { name: 'sort', label: 'Ordre d’affichage', type: 'number', default: 0 },
+    { type: 'map', label: 'Position sur la carte' },
+  ];
+
+  function editParking(pk) {
+    openModal({
+      title: pk ? 'Modifier le stationnement' : 'Ajouter un stationnement',
+      html: `<div class="grid-2">${parkingFields.map((f) => fieldHtml(f, f.type === 'map' ? pk : pk?.[f.name])).join('')}</div>`,
+      afterOpen: (root) => setupMapPicker(root, defaultCenter),
+      onSubmit: async (root) => {
+        const data = readForm(root, parkingFields);
+        if (pk) await call(`/admin/parkings/${pk.id}`, { method: 'PUT', body: data });
+        else await call('/admin/parkings', { method: 'POST', body: data });
+        toast('Stationnement enregistré');
+        refresh();
+      },
+      onDelete: pk ? async () => { await call(`/admin/parkings/${pk.id}`, { method: 'DELETE' }); toast('Stationnement supprimé'); refresh(); } : null,
+      deleteConfirm: 'Le stationnement sera retiré de la page « Où se garer ? ».',
+    });
+  }
 
   function editPlace(p) {
     openModal({
@@ -492,7 +528,7 @@
   }
 
   async function places() {
-    const list = await call('/admin/places');
+    const [list, pk] = await Promise.all([call('/admin/places'), call('/admin/parkings')]);
     view.innerHTML = `
       <div class="page-head row">
         <h1>Lieux &amp; programme</h1>
@@ -505,9 +541,43 @@
           <span class="row-main"><strong>${esc(p.time ? p.time + ' — ' : '')}${esc(p.name)}</strong>
           <small>${esc(p.address || 'Adresse non renseignée')}${hasCoords(p) ? '' : ' · ⚠️ pas de position sur la carte'}</small></span>
           <span class="row-chevron" aria-hidden="true">›</span></button>`).join('') || '<p class="empty">Aucun lieu.</p>'}
+      </div>
+
+      <div class="page-head row pk-admin-head">
+        <h2>🅿️ Stationnement</h2>
+        <div class="actions">
+          <button class="btn btn-primary btn-small" id="add-parking">+ Stationnement</button>
+          <a class="btn btn-ghost btn-small" href="/stationnement/" target="_blank" rel="noopener">Voir la page</a>
+        </div>
+      </div>
+      <p class="muted small">Page « Où se garer ? » : carte avec la mairie, l’église et les stationnements ci-dessous. Le lien apparaît dans le programme
+        sous l’itinéraire des lieux où l’option « Où se garer ? » est cochée${pk.parkings.length ? '' : ', dès qu’un stationnement est ajouté'}.</p>
+      <form class="panel" id="pk-intro-form">
+        <label class="field">Texte d’introduction de la page
+          <textarea name="intro" rows="3" maxlength="2000">${esc(pk.intro)}</textarea></label>
+        <button class="btn btn-small btn-primary" type="submit">Enregistrer le texte</button>
+      </form>
+      <div class="list">
+        ${pk.parkings.map((x) => `<button class="row-card" data-parking="${x.id}">
+          <span class="row-icon pk-row-icon ${x.kind === 'pmr' ? 'is-pmr' : ''}" aria-hidden="true">${x.kind === 'pmr' ? '♿' : 'P'}</span>
+          <span class="row-main"><strong>${esc(x.name)}</strong>
+            <small>${[x.kind === 'pmr' ? `${x.pmr_spots} place(s) PMR` : x.spots ? `${x.spots} places` : '',
+              x.kind !== 'pmr' && x.pmr_spots ? `♿ ${x.pmr_spots} PMR` : '', x.fee === 'free' ? 'Gratuit' : x.fee === 'paid' ? 'Payant' : '']
+              .filter(Boolean).map(esc).join(' · ')}</small>
+            <small>${esc(x.address || 'Adresse non renseignée')}${hasCoords(x) ? '' : ' · ⚠️ pas de position sur la carte'}</small></span>
+          <span class="row-chevron" aria-hidden="true">›</span></button>`).join('') || '<p class="empty">Aucun stationnement. Ajoutez-en avec le bouton ci-dessus.</p>'}
       </div>`;
     $('#add-place').addEventListener('click', () => editPlace(null));
-    $$('.row-card', view).forEach((el) => el.addEventListener('click', () => editPlace(list.find((p) => p.id === +el.dataset.id))));
+    $('#add-parking').addEventListener('click', () => editParking(null));
+    $$('[data-parking]', view).forEach((el) => el.addEventListener('click', () => editParking(pk.parkings.find((x) => x.id === +el.dataset.parking))));
+    $('#pk-intro-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await call('/admin/parking-settings', { method: 'PUT', body: { intro: e.target.elements.intro.value } });
+        toast('Texte enregistré');
+      } catch (err) { toast(err.message, 'error'); }
+    });
+    $$('.row-card[data-id]', view).forEach((el) => el.addEventListener('click', () => editPlace(list.find((p) => p.id === +el.dataset.id))));
   }
 
   /* =========================================================

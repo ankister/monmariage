@@ -345,6 +345,7 @@ location /api/admin/ {
 | Je veux… | Où |
 |---|---|
 | Fixer le prix des chambres sur place | **Chambres → Chambres & prix** (2 nuits / samedi seul, **par chambre ou par lit** pour les dortoirs, total en bas de la liste, enregistrement automatique) |
+| Indiquer où se garer (dont places PMR) | **Lieux → 🅿️ Stationnement** : parkings et places PMR placés sur la carte ; page « Où se garer ? » liée sous l'itinéraire de la mairie (case dans la fiche du lieu) |
 | Envoyer les modalités de règlement par e-mail | **Chambres → Réservations → Règlement en cours** : mail automatique à l'invité ; serveur SMTP et modèle HTML dans le bloc **Mail** (sous les réservations), sans variable de conteneur |
 | Ajouter des photos d'une chambre | **Chambres → Chambres & prix → toucher la chambre → + Ajouter des photos** |
 | Valider une réservation de chambre | **Chambres → Réservations → Valider** |
