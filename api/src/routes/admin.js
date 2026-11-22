@@ -55,13 +55,16 @@ router.get('/stats', (req, res) => {
   const gites = gitesWithAvailability().filter((x) => x.bookable);
   const rooms = db.prepare(`
     SELECT COUNT(*) AS total,
-           SUM(EXISTS (SELECT 1 FROM room_bookings b WHERE b.room_id = r.id AND b.status != 'cancelled')) AS taken,
+           SUM(CASE WHEN r.price_mode = 'bed'
+                    THEN (SELECT COALESCE(SUM(b.persons), 0) FROM room_bookings b WHERE b.room_id = r.id AND b.status != 'cancelled') >= r.capacity
+                    ELSE EXISTS (SELECT 1 FROM room_bookings b WHERE b.room_id = r.id AND b.status != 'cancelled') END) AS taken,
            SUM(r.capacity) AS beds
     FROM rooms r WHERE r.bookable = 1`).get();
   const roomBookings = db.prepare(`
     SELECT COALESCE(SUM(b.persons), 0) AS persons,
            COALESCE(SUM(b.status = 'pending'), 0) AS pending,
-           COALESCE(SUM(CASE WHEN b.nights = 'sat' THEN r.price_sat ELSE r.price_both END), 0) AS amount
+           COALESCE(SUM((CASE WHEN b.nights = 'sat' THEN r.price_sat ELSE r.price_both END)
+                        * (CASE WHEN r.price_mode = 'bed' THEN b.persons ELSE 1 END)), 0) AS amount
     FROM room_bookings b JOIN rooms r ON r.id = b.room_id WHERE b.status != 'cancelled'`).get();
   res.json({
     onsite: {

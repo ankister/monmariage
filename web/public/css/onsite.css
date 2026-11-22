@@ -123,3 +123,4 @@
   .rd-facts { grid-template-columns: repeat(3, 1fr); }
   .rc-photo { width: 130px; }
 }
+.rd-total { font-weight: 700; color: var(--accent); margin: -.25rem 0 1rem; font-size: 1.05rem; }

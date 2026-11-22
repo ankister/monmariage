@@ -20,7 +20,18 @@
   let statusFilter = 'all';
   let planFloor = 'rdc';
 
-  const priceOf = (b) => (b.nights === 'sat' ? b.price_sat : b.price_both);
+  const priceOf = (b) => b.amount ?? null; // calculé par l'API (prix du lit × lits pour un dortoir)
+  const unitOf = (b) => (b.nights === 'sat' ? b.price_sat : b.price_both);
+  const bedsLabel = (n) => `${n} lit${n > 1 ? 's' : ''}`;
+  const whoCount = (b) => (b.price_mode === 'bed' ? bedsLabel(b.persons) : `${b.persons} pers.`);
+  /** Occupation affichée : nom de l'occupant (chambre entière) ou lits occupés (dortoir). */
+  const occupancyPill = (r) => {
+    if (r.per_bed) {
+      const cls = r.full ? 'pill-no' : r.beds_taken ? 'pill-wait' : 'pill-ok';
+      return `<span class="pill ${cls}">${r.beds_taken}/${r.capacity} lits pris</span>`;
+    }
+    return r.booking ? `<span class="pill ${STATUS[r.booking.status].cls}">${esc(fullName(r.booking))}</span>` : '<span class="pill pill-ok">Libre</span>';
+  };
   const fullName = (b) => `${b.first_name} ${b.last_name}`.trim();
   const priceInput = (v) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
 
@@ -31,7 +42,7 @@
     const [{ rooms, nights }, bookings] = await Promise.all([A.call('/admin/rooms'), A.call('/admin/room-bookings')]);
     const active = bookings.filter((b) => b.status !== 'cancelled');
     const offered = rooms.filter((r) => r.bookable);
-    const taken = offered.filter((r) => r.booking).length;
+    const taken = offered.filter((r) => r.full).length;
     const pending = bookings.filter((b) => b.status === 'pending').length;
     const persons = active.reduce((s, b) => s + b.persons, 0);
     const amount = active.reduce((s, b) => s + (priceOf(b) || 0), 0);
@@ -86,9 +97,9 @@
       $('#rb-list').innerHTML = list.map((b) => `
         <li class="booking ${b.status}">
           <div class="booking-main">
-            <strong>${esc(b.room_name)}</strong> — ${esc(fullName(b))} · ${b.persons} pers.
+            <strong>${esc(b.room_name)}</strong> — ${esc(fullName(b))} · ${whoCount(b)}
             <span class="pill ${STATUS[b.status].cls}">${STATUS[b.status].label}</span>
-            <small>🌙 ${esc(nights[b.nights])} · ${esc(euro(priceOf(b), 'prix non défini'))}
+            <small>🌙 ${esc(nights[b.nights])} · ${esc(euro(priceOf(b), 'prix non défini'))}${b.price_mode === 'bed' && unitOf(b) !== null ? ` (${b.persons} × ${esc(euro(unitOf(b)))})` : ''}
               ${[b.email, b.phone].filter(Boolean).map((x) => ' · ' + esc(x)).join('')}</small>
             ${b.message ? `<small class="quote">« ${esc(b.message)} »</small>` : ''}
             ${b.notes ? `<small>📝 ${esc(b.notes)}</small>` : ''}
@@ -125,11 +136,13 @@
     const fields = [
       { name: 'room_id', label: 'Chambre', type: 'select', full: true, options: rooms.map((r) => ({
         value: r.id,
-        label: `${r.name} — ${r.capacity} pers.${r.booking && (!b || r.booking.id !== b.id) ? ' (réservée)' : ''}`,
+        label: r.per_bed
+          ? `${r.name} — dortoir, ${r.beds_free + (b && b.room_id === r.id && b.status !== 'cancelled' ? b.persons : 0)} lit(s) libre(s) sur ${r.capacity}`
+          : `${r.name} — ${r.capacity} pers.${r.booking && (!b || r.booking.id !== b.id) ? ' (réservée)' : ''}`,
       })) },
       { name: 'first_name', label: 'Prénom', required: true },
       { name: 'last_name', label: 'Nom', required: true },
-      { name: 'persons', label: 'Personnes', type: 'number', min: 1, max: 20, default: 2 },
+      { name: 'persons', label: 'Personnes (lits pour un dortoir)', type: 'number', min: 1, max: 20, default: 2 },
       { name: 'nights', label: 'Nuits', type: 'select', options: [{ value: 'both', label: nights.both }, { value: 'sat', label: nights.sat }] },
       { name: 'email', label: 'E-mail', type: 'email' },
       { name: 'phone', label: 'Téléphone', type: 'tel' },
@@ -161,20 +174,59 @@
           <button class="rr-main" data-room="${r.id}" aria-label="Modifier ${esc(r.name)} et ses photos">
             <span class="rr-thumb">${r.photos[0] ? `<img src="${esc(r.photos[0].url)}" alt="" loading="lazy">` : '<span aria-hidden="true">📷</span>'}</span>
             <span class="row-main"><strong>${esc(r.name)}</strong>
-              <small>${r.capacity} pers. · ${esc(r.beds)} · ${r.photos.length} photo${r.photos.length > 1 ? 's' : ''}</small>
-              <small>${!r.bookable ? '⛔ Non proposée' : r.booking
-                ? `<span class="pill ${STATUS[r.booking.status].cls}">${esc(fullName(r.booking))}</span>` : '<span class="pill pill-ok">Libre</span>'}</small>
+              <small>${r.capacity} ${r.per_bed ? 'lits' : 'pers.'} · ${esc(r.beds)} · ${r.photos.length} photo${r.photos.length > 1 ? 's' : ''}</small>
+              <small>${!r.bookable ? '⛔ Non proposée' : occupancyPill(r)}</small>
             </span>
           </button>
           <div class="rr-prices">
+            <label class="rr-mode">Prix
+              <select data-mode data-id="${r.id}" aria-label="Type de prix ${esc(r.name)}">
+                <option value="room" ${r.per_bed ? '' : 'selected'}>par chambre</option>
+                <option value="bed" ${r.per_bed ? 'selected' : ''}>par lit</option>
+              </select></label>
             <label>2 nuits<span class="euro"><input inputmode="decimal" data-price="price_both" data-id="${r.id}" value="${esc(priceInput(r.price_both))}" placeholder="—" aria-label="Prix 2 nuits ${esc(r.name)}"></span></label>
             <label>Samedi<span class="euro"><input inputmode="decimal" data-price="price_sat" data-id="${r.id}" value="${esc(priceInput(r.price_sat))}" placeholder="—" aria-label="Prix samedi seul ${esc(r.name)}"></span></label>
           </div>
         </div>`).join('')}</div>`;
     pane.innerHTML = `
-      <p class="muted small">Prix de la chambre entière, en euros. Ils s'enregistrent automatiquement quand vous quittez le champ.
-        Touchez une chambre pour modifier sa fiche et ses photos.</p>
-      ${block('rdc', 'Rez-de-chaussée')}${block('etage', 'Étage')}`;
+      <p class="muted small">Prix en euros, pour la chambre entière ou <b>par lit</b> (dortoirs : chaque invité réserve le nombre de lits voulu).
+        Ils s'enregistrent automatiquement quand vous quittez le champ. Touchez une chambre pour modifier sa fiche et ses photos.</p>
+      ${block('rdc', 'Rez-de-chaussée')}${block('etage', 'Étage')}
+      <div class="panel rooms-total" id="rooms-total" aria-live="polite"></div>`;
+
+    /** Somme des prix si toutes les chambres proposées sont louées (dortoir : prix du lit × nombre de lits). */
+    const drawTotal = () => {
+      const offered = rooms.filter((r) => r.bookable);
+      const sum = (key) => offered.reduce((t, r) => t + (r[key] ?? 0) * (r.per_bed ? r.capacity : 1), 0);
+      const missing = (key) => offered.filter((r) => r[key] === null || r[key] === undefined).length;
+      const beds = offered.reduce((t, r) => t + r.capacity, 0);
+      const line = (key, label, sub) => `<div class="rt-cell"><span class="rt-label">${label}<small>${sub}</small></span>
+        <strong class="rt-sum">${esc(euro(sum(key), '0 €'))}</strong>
+        ${missing(key) ? `<small class="warn-text">${A.plural(missing(key), 'chambre sans prix', 'chambres sans prix')}</small>` : ''}</div>`;
+      $('#rooms-total').innerHTML = `
+        <h2>Total si tout est loué</h2>
+        <p class="muted small">${A.plural(offered.length, 'chambre proposée', 'chambres proposées')}, ${beds} couchages.
+          Les dortoirs comptent pour le prix du lit × leur nombre de lits.</p>
+        <div class="rt-grid">${line('price_both', '2 nuits', 'vendredi + samedi')}${line('price_sat', '1 nuit', 'samedi seul')}</div>`;
+    };
+    drawTotal();
+    $$('[data-mode]', pane).forEach((sel) => sel.addEventListener('change', async () => {
+      const room = rooms.find((r) => r.id === +sel.dataset.id);
+      const prev = room.per_bed ? 'bed' : 'room';
+      if (sel.value === 'room' && room.bookings?.length > 1) {
+        A.toast(`« ${room.name} » a ${room.bookings.length} réservations : gardez une seule réservation avant de la louer en entier.`, 'error');
+        sel.value = prev;
+        return;
+      }
+      try {
+        await A.call(`/admin/rooms/${room.id}`, { method: 'PUT', body: { price_mode: sel.value } });
+        A.toast(sel.value === 'bed' ? `« ${room.name} » : prix par lit` : `« ${room.name} » : prix de la chambre entière`);
+        roomsView();
+      } catch (err) {
+        A.toast(err.message, 'error');
+        sel.value = prev;
+      }
+    }));
 
     $$('[data-room]', pane).forEach((b) => b.addEventListener('click', () => editRoom(rooms.find((r) => r.id === +b.dataset.room))));
     $$('[data-price]', pane).forEach((input) => {
@@ -186,6 +238,7 @@
           // Garde les données locales à jour : la fiche ouverte ensuite affichera ce prix
           const room = rooms.find((r) => r.id === +input.dataset.id);
           if (room) room[input.dataset.price] = v === '' ? null : Number(v);
+          drawTotal();
           input.dataset.saved = input.value;
           input.classList.add('saved');
           setTimeout(() => input.classList.remove('saved'), 1200);
@@ -210,9 +263,10 @@
         <p class="muted small">Touchez une chambre pour modifier sa fiche, ses prix et ses photos.</p></div>`;
     const draw = () => {
       $('#admin-plan').innerHTML = renderPlan(planFloor, rooms, {
-        statusOf: (r) => (!r.bookable ? 'off' : r.booking ? 'taken' : 'free'),
-        // Sur le plan d'administration, la pastille indique l'occupant
-        badge: (r) => (!r.bookable ? 'Non proposée' : r.booking ? r.booking.last_name.slice(0, 12) || 'Réservée' : 'Libre'),
+        statusOf: (r) => (!r.bookable ? 'off' : r.full ? 'taken' : 'free'),
+        // Sur le plan d'administration, la pastille indique l'occupant (ou les lits pris d'un dortoir)
+        badge: (r) => (!r.bookable ? 'Non proposée' : r.per_bed ? `${r.beds_taken}/${r.capacity} lits`
+          : r.booking ? r.booking.last_name.slice(0, 12) || 'Réservée' : 'Libre'),
       });
     };
     $$('[data-floor]', pane).forEach((b) => b.addEventListener('click', () => {
@@ -232,6 +286,10 @@
     { name: 'short_name', label: 'Libellé sur le plan', help: 'Court : 10 caractères environ.' },
     { name: 'capacity', label: 'Capacité (couchages, bébé compris)', type: 'number', min: 1, max: 20 },
     { name: 'area', label: 'Surface' },
+    { name: 'price_mode', label: 'Type de prix', type: 'select', full: true, options: [
+      { value: 'room', label: 'Prix de la chambre entière (une seule réservation)' },
+      { value: 'bed', label: 'Prix par lit — dortoir (les invités réservent des lits)' },
+    ] },
     { name: 'price_both', label: 'Prix 2 nuits (€)', placeholder: 'ex. 120' },
     { name: 'price_sat', label: 'Prix samedi seul (€)', placeholder: 'ex. 70' },
     { name: 'beds', label: 'Couchage', full: true },
@@ -248,7 +306,7 @@
       const { rooms } = await A.call('/admin/rooms');
       r = rooms.find((x) => x.id === stale.id) || stale;
     } catch { /* on garde la version affichée */ }
-    const values = { ...r, price_both: priceInput(r.price_both), price_sat: priceInput(r.price_sat) };
+    const values = { ...r, price_both: priceInput(r.price_both), price_sat: priceInput(r.price_sat), price_mode: r.per_bed ? 'bed' : 'room' };
     A.openModal({
       title: r.name,
       html: `
@@ -260,7 +318,8 @@
           <p class="pm-progress" id="pm-progress" aria-live="polite"></p>
           <div class="pm-grid" id="pm-grid"></div>
         </section>
-        ${r.booking ? `<p class="notice">Réservée par ${esc(fullName(r.booking))} (${STATUS[r.booking.status].label.toLowerCase()}).</p>` : ''}
+        ${r.per_bed && r.bookings.length ? `<p class="notice">${r.beds_taken}/${r.capacity} lits réservés : ${r.bookings.map((b) => `${esc(fullName(b))} (${bedsLabel(b.persons)})`).join(', ')}.</p>`
+          : r.booking ? `<p class="notice">Réservée par ${esc(fullName(r.booking))} (${STATUS[r.booking.status].label.toLowerCase()}).</p>` : ''}
         <div class="grid-2">${roomFields.map((f) => A.fieldHtml(f, values[f.name])).join('')}</div>`,
       onSubmit: async (root) => {
         await A.call(`/admin/rooms/${r.id}`, { method: 'PUT', body: A.readForm(root, roomFields) });

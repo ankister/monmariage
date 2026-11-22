@@ -9,7 +9,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const express = require('express');
-const { db, MEDIA_DIR, getContent, getPrivate, roomsWithStatus } = require('../db');
+const { db, MEDIA_DIR, getContent, getPrivate, roomsWithStatus, bookingAmount } = require('../db');
 const { HttpError, str, int, oneOf, email, rateLimit, toCsv, imageType } = require('../util');
 
 const NIGHTS = ['both', 'sat'];
@@ -52,7 +52,8 @@ publicRouter.get('/rooms', (req, res) => {
       id: r.id, code: r.code, name: r.name, short_name: r.short_name, floor: r.floor, area: r.area,
       capacity: r.capacity, beds: r.beds, bath: r.bath, private_bath: r.private_bath, baby_bed: r.baby_bed,
       description: r.description, price_both: r.price_both, price_sat: r.price_sat,
-      available: r.bookable && !r.booking, bookable: r.bookable,
+      per_bed: r.per_bed, beds_free: r.bookable ? r.beds_free : 0,
+      available: r.bookable && !r.full, bookable: r.bookable,
       x: r.x, y: r.y, w: r.w, h: r.h, bed_icon: r.bed_icon, photos: r.photos,
     })),
   });
@@ -63,9 +64,17 @@ const bookRoomTx = db.transaction((d) => {
   const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(d.room_id);
   if (!room) throw new HttpError(404, 'Chambre introuvable.');
   if (!room.bookable) throw new HttpError(400, 'Cette chambre n’est pas proposée à la réservation.');
-  const taken = db.prepare("SELECT 1 FROM room_bookings WHERE room_id = ? AND status != 'cancelled'").get(d.room_id);
-  if (taken) throw new HttpError(409, `Désolé, « ${room.name} » vient d’être réservée. Choisissez une autre chambre.`);
-  if (d.persons > room.capacity) throw new HttpError(400, `« ${room.name} » accueille ${room.capacity} personne(s) au maximum.`);
+  if (room.price_mode === 'bed') {
+    // Dortoir loué au lit : plusieurs réservations tant qu'il reste des lits
+    const used = db.prepare("SELECT COALESCE(SUM(persons), 0) AS n FROM room_bookings WHERE room_id = ? AND status != 'cancelled'").get(d.room_id).n;
+    const free = Math.max(0, room.capacity - used);
+    if (!free) throw new HttpError(409, `Désolé, il n’y a plus de lit libre dans « ${room.name} ». Choisissez une autre chambre.`);
+    if (d.persons > free) throw new HttpError(409, `Il ne reste que ${free} lit${free > 1 ? 's' : ''} libre${free > 1 ? 's' : ''} dans « ${room.name} ».`);
+  } else {
+    const taken = db.prepare("SELECT 1 FROM room_bookings WHERE room_id = ? AND status != 'cancelled'").get(d.room_id);
+    if (taken) throw new HttpError(409, `Désolé, « ${room.name} » vient d’être réservée. Choisissez une autre chambre.`);
+    if (d.persons > room.capacity) throw new HttpError(400, `« ${room.name} » accueille ${room.capacity} personne(s) au maximum.`);
+  }
   db.prepare(`INSERT INTO room_bookings (room_id, first_name, last_name, email, phone, persons, nights, message)
               VALUES (@room_id, @first_name, @last_name, @email, @phone, @persons, @nights, @message)`).run(d);
   return room;
@@ -94,9 +103,10 @@ publicRouter.post('/room-bookings', rateLimit('room', 10, 10 * 60_000), (req, re
   if (!d.nights) throw new HttpError(400, 'Merci de choisir vos nuits.');
   const room = bookRoomTx(d);
   const labels = nightLabels(content);
+  const what = room.price_mode === 'bed' ? `${d.persons} lit${d.persons > 1 ? 's' : ''} dans « ${room.name} »` : `« ${room.name} »`;
   res.json({
     ok: true,
-    message: `Merci ${d.first_name} ! Votre demande pour « ${room.name} » (${labels[d.nights].toLowerCase()}) est enregistrée. Nous vous confirmerons la réservation rapidement.`,
+    message: `Merci ${d.first_name} ! Votre demande pour ${what} (${labels[d.nights].toLowerCase()}) est enregistrée. Nous vous confirmerons la réservation rapidement.`,
   });
 });
 
@@ -139,11 +149,16 @@ adminRouter.put('/rooms/:id', (req, res) => {
     description: has('description') ? str(b.description, 1500) : cur.description,
     price_both: has('price_both') ? price(b.price_both) : cur.price_both,
     price_sat: has('price_sat') ? price(b.price_sat) : cur.price_sat,
+    price_mode: has('price_mode') ? oneOf(b.price_mode, ['room', 'bed'], 'room') : cur.price_mode,
     bookable: has('bookable') ? (b.bookable ? 1 : 0) : cur.bookable,
   };
+  if (next.price_mode === 'room' && cur.price_mode === 'bed') {
+    const n = db.prepare("SELECT COUNT(*) AS n FROM room_bookings WHERE room_id = ? AND status != 'cancelled'").get(id).n;
+    if (n > 1) throw new HttpError(409, `« ${cur.name} » a ${n} réservations au lit : n’en gardez qu’une avant de la louer en entier.`);
+  }
   db.prepare(`UPDATE rooms SET name=@name, short_name=@short_name, area=@area, capacity=@capacity, beds=@beds, bath=@bath,
               private_bath=@private_bath, baby_bed=@baby_bed, description=@description, price_both=@price_both,
-              price_sat=@price_sat, bookable=@bookable WHERE id=@id`).run(next);
+              price_sat=@price_sat, price_mode=@price_mode, bookable=@bookable WHERE id=@id`).run(next);
   res.json({ ok: true });
 });
 
@@ -212,11 +227,18 @@ function bookingFrom(b, cur = {}) {
   return d;
 }
 
-/** Une chambre ne peut avoir qu'une réservation active. */
+/** Une chambre entière : une seule réservation active. Un dortoir loué au lit : autant que de lits. */
 function checkRoomFree(d, excludeId = 0) {
   if (d.status === 'cancelled') return;
-  const room = db.prepare('SELECT name, capacity FROM rooms WHERE id = ?').get(d.room_id);
+  const room = db.prepare('SELECT name, capacity, price_mode FROM rooms WHERE id = ?').get(d.room_id);
   if (!room) throw new HttpError(404, 'Chambre introuvable.');
+  if (room.price_mode === 'bed') {
+    const used = db.prepare(`SELECT COALESCE(SUM(persons), 0) AS n FROM room_bookings
+                             WHERE room_id = ? AND status != 'cancelled' AND id != ?`).get(d.room_id, excludeId).n;
+    const free = Math.max(0, room.capacity - used);
+    if (d.persons > free) throw new HttpError(409, `« ${room.name} » : ${free} lit${free > 1 ? 's' : ''} libre${free > 1 ? 's' : ''} seulement (${room.capacity} au total).`);
+    return;
+  }
   const other = db.prepare(`SELECT first_name, last_name FROM room_bookings
                             WHERE room_id = ? AND status != 'cancelled' AND id != ?`).get(d.room_id, excludeId);
   if (other) {
@@ -226,8 +248,9 @@ function checkRoomFree(d, excludeId = 0) {
 }
 
 adminRouter.get('/room-bookings', (req, res) => {
-  res.json(db.prepare(`SELECT b.*, r.name AS room_name, r.floor, r.price_both, r.price_sat FROM room_bookings b
-                       JOIN rooms r ON r.id = b.room_id ORDER BY b.created_at DESC, b.id DESC`).all());
+  res.json(db.prepare(`SELECT b.*, r.name AS room_name, r.floor, r.price_both, r.price_sat, r.price_mode FROM room_bookings b
+                       JOIN rooms r ON r.id = b.room_id ORDER BY b.created_at DESC, b.id DESC`).all()
+    .map((b) => ({ ...b, amount: bookingAmount(b) })));
 });
 
 adminRouter.post('/room-bookings', (req, res) => {
@@ -262,13 +285,14 @@ adminRouter.delete('/room-bookings/:id', (req, res) => {
 const STATUS = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' };
 adminRouter.get('/room-bookings.csv', (req, res) => {
   const labels = nightLabels(getContent());
-  const rows = db.prepare(`SELECT b.*, r.name AS room_name, r.floor, r.price_both, r.price_sat FROM room_bookings b
+  const rows = db.prepare(`SELECT b.*, r.name AS room_name, r.floor, r.price_both, r.price_sat, r.price_mode FROM room_bookings b
                            JOIN rooms r ON r.id = b.room_id ORDER BY r.sort, b.created_at`).all();
   const csv = toCsv(rows, [
     { label: 'Chambre', key: 'room_name' }, { label: 'Étage', value: (r) => (r.floor === 'rdc' ? 'RDC' : 'Étage') },
     { label: 'Prénom', key: 'first_name' }, { label: 'Nom', key: 'last_name' }, { label: 'Personnes', key: 'persons' },
     { label: 'Nuits', value: (r) => labels[r.nights] }, { label: 'Statut', value: (r) => STATUS[r.status] },
-    { label: 'Prix (€)', value: (r) => { const p = r.nights === 'sat' ? r.price_sat : r.price_both; return p === null ? '' : String(p).replace('.', ','); } },
+    { label: 'Lits / personnes', value: (r) => (r.price_mode === 'bed' ? `${r.persons} lit(s)` : `${r.persons} pers.`) },
+    { label: 'Prix (€)', value: (r) => { const p = bookingAmount(r); return p === null ? '' : String(p).replace('.', ','); } },
     { label: 'E-mail', key: 'email' }, { label: 'Téléphone', key: 'phone' }, { label: 'Message', key: 'message' },
     { label: 'Notes internes', key: 'notes' }, { label: 'Date de demande', key: 'created_at' },
   ]);

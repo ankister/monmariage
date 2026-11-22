@@ -29,12 +29,17 @@
     });
   }
 
-  /** Prix le plus bas affichable sur une carte. */
+  const lits = (n) => `${n} lit${n > 1 ? 's' : ''}`;
+  /** Prix le plus bas affichable sur une carte (« / lit » pour un dortoir). */
   function priceHint(r) {
     const prices = [r.price_sat, r.price_both].filter((p) => p !== null && p !== undefined);
     if (!prices.length) return '';
-    return prices.length > 1 ? `dès ${euro(Math.min(...prices))}` : euro(prices[0]);
+    const unit = r.per_bed ? ' / lit' : '';
+    return (prices.length > 1 ? `dès ${euro(Math.min(...prices))}` : euro(prices[0])) + unit;
   }
+  /** Texte de disponibilité : « Disponible », « 3 lits libres », « Complet »… */
+  const availText = (r, st) => (st === 'free' ? (r.per_bed ? `${lits(r.beds_free)} libre${r.beds_free > 1 ? 's' : ''}` : 'Disponible')
+    : st === 'taken' ? (r.per_bed ? 'Complet' : 'Réservée') : 'Indisponible');
 
   /* ---------- En-tête : statistiques et formules ---------- */
   function renderHeader() {
@@ -60,7 +65,8 @@
       selectedId: state.selectedId,
       matches,
       statusOf,
-      badge: (r) => (statusOf(r) === 'free' ? `${r.capacity} pers.` : statusOf(r) === 'taken' ? 'Réservée' : 'Indisponible'),
+      badge: (r) => (statusOf(r) === 'free' ? (r.per_bed ? `${lits(r.beds_free)} libre${r.beds_free > 1 ? 's' : ''}` : `${r.capacity} pers.`)
+        : statusOf(r) === 'taken' ? (r.per_bed ? 'Complet' : 'Réservée') : 'Indisponible'),
     });
   }
 
@@ -75,8 +81,8 @@
           ${r.photos.length > 1 ? `<span class="rc-count">📷 ${r.photos.length}</span>` : ''}</span>
         <span class="rc-body">
           <span class="rc-top"><strong>${esc(r.name)}</strong>
-            <span class="badge ${st === 'free' ? 'badge-ok' : 'badge-full'}">${st === 'free' ? 'Disponible' : st === 'taken' ? 'Réservée' : 'Indisponible'}</span></span>
-          <span class="rc-line">👥 ${r.capacity} pers. · ${esc(r.beds)}</span>
+            <span class="badge ${st === 'free' ? 'badge-ok' : 'badge-full'}">${esc(availText(r, st))}</span></span>
+          <span class="rc-line">👥 ${r.per_bed ? `Dortoir · ${r.capacity} lits, réservables à l’unité` : `${r.capacity} pers. · ${esc(r.beds)}`}</span>
           <span class="rc-line">${r.private_bath ? '🚿 Salle d’eau privative' : '🚿 Sanitaires partagés'}${r.baby_bed ? ' · 👶 Lit bébé' : ''}</span>
           ${priceHint(r) ? `<span class="rc-price">${esc(priceHint(r))}</span>` : ''}
         </span>
@@ -116,21 +122,23 @@
       : '<div class="gallery gallery-empty"><span aria-hidden="true">🛏️</span><small>Photos à venir</small></div>';
 
     const price = (key) => (r[key] === null || r[key] === undefined ? '<em>à préciser</em>' : esc(euro(r[key])));
-    const options = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((n) => n <= r.capacity);
+    const max = r.per_bed ? r.beds_free : r.capacity;
+    const options = Array.from({ length: Math.max(0, Math.min(20, max)) }, (_, i) => i + 1);
+    const unit = r.per_bed ? ' / lit' : '';
 
     $('#rd-body').innerHTML = `
       ${gallery}
       <div class="rd-content">
         <ul class="rd-facts">
-          <li><span aria-hidden="true">👥</span><div><small>Capacité</small><strong>${r.capacity} personne${r.capacity > 1 ? 's' : ''}</strong></div></li>
+          <li><span aria-hidden="true">👥</span><div><small>${r.per_bed ? 'Dortoir' : 'Capacité'}</small><strong>${r.per_bed ? `${lits(r.capacity)} · ${lits(r.beds_free)} libre${r.beds_free > 1 ? 's' : ''}` : `${r.capacity} personne${r.capacity > 1 ? 's' : ''}`}</strong></div></li>
           <li><span aria-hidden="true">🛏️</span><div><small>Couchage</small><strong>${esc(r.beds)}</strong></div></li>
           <li><span aria-hidden="true">🚿</span><div><small>Sanitaires</small><strong>${esc(r.bath)}</strong></div></li>
         </ul>
         ${r.description ? `<p class="pre">${esc(r.description)}</p>` : ''}
         <table class="price-table">
-          <caption>Tarif de la chambre</caption>
-          <tr><th scope="row">${esc(state.nights.both)}</th><td>${price('price_both')}</td></tr>
-          <tr><th scope="row">${esc(state.nights.sat)}</th><td>${price('price_sat')}</td></tr>
+          <caption>${r.per_bed ? 'Tarif par lit' : 'Tarif de la chambre'}</caption>
+          <tr><th scope="row">${esc(state.nights.both)}</th><td>${price('price_both')}${r.price_both !== null ? unit : ''}</td></tr>
+          <tr><th scope="row">${esc(state.nights.sat)}</th><td>${price('price_sat')}${r.price_sat !== null ? unit : ''}</td></tr>
         </table>
 
         ${canBook ? `
@@ -140,18 +148,19 @@
             <label class="field">Prénom<input name="first_name" autocomplete="given-name" required maxlength="80"></label>
             <label class="field">Nom<input name="last_name" autocomplete="family-name" required maxlength="80"></label>
           </div>
-          <label class="field">Nombre de personnes
-            <select name="persons" required>${options.map((n) => `<option value="${n}" ${n === Math.min(2, r.capacity) ? 'selected' : ''}>${n} personne${n > 1 ? 's' : ''}</option>`).join('')}</select>
+          <label class="field">${r.per_bed ? 'Nombre de lits' : 'Nombre de personnes'}
+            <select name="persons" required>${options.map((n) => `<option value="${n}" ${n === (r.per_bed ? 1 : Math.min(2, r.capacity)) ? 'selected' : ''}>${r.per_bed ? lits(n) : `${n} personne${n > 1 ? 's' : ''}`}</option>`).join('')}</select>
           </label>
           <fieldset class="field">
             <legend>Nuits</legend>
             <div class="choice">
               <label class="choice-item"><input type="radio" name="nights" value="both" required>
-                <span><strong>${esc(state.nights.both)}</strong><small>${r.price_both !== null ? esc(euro(r.price_both)) : '2 nuits'}</small></span></label>
+                <span><strong>${esc(state.nights.both)}</strong><small>${r.price_both !== null ? esc(euro(r.price_both) + unit) : '2 nuits'}</small></span></label>
               <label class="choice-item"><input type="radio" name="nights" value="sat">
-                <span><strong>${esc(state.nights.sat)}</strong><small>${r.price_sat !== null ? esc(euro(r.price_sat)) : '1 nuit'}</small></span></label>
+                <span><strong>${esc(state.nights.sat)}</strong><small>${r.price_sat !== null ? esc(euro(r.price_sat) + unit) : '1 nuit'}</small></span></label>
             </div>
           </fieldset>
+          ${r.per_bed ? '<p class="rd-total" id="rd-total" aria-live="polite" hidden></p>' : ''}
           <div class="grid-2">
             <label class="field">E-mail <small class="opt">(facultatif)</small><input name="email" type="email" autocomplete="email" maxlength="200"></label>
             <label class="field">Téléphone <small class="opt">(facultatif)</small><input name="phone" type="tel" autocomplete="tel" maxlength="40"></label>
@@ -163,7 +172,7 @@
           <p class="form-status" role="status" aria-live="polite"></p>
           ${state.onsite.note ? `<p class="muted small pre">${esc(state.onsite.note)}</p>` : ''}
         </form>`
-        : `<p class="rd-unavailable">${st === 'taken' ? 'Cette chambre est déjà réservée.' : st === 'off' ? 'Cette chambre n’est pas proposée à la réservation.' : 'Les réservations en ligne sont closes.'}</p>
+        : `<p class="rd-unavailable">${st === 'taken' ? (r.per_bed ? 'Tous les lits de ce dortoir sont réservés.' : 'Cette chambre est déjà réservée.') : st === 'off' ? 'Cette chambre n’est pas proposée à la réservation.' : 'Les réservations en ligne sont closes.'}</p>
            <button type="button" class="btn btn-ghost" id="rd-other">Voir les autres chambres</button>`}
       </div>`;
 
@@ -192,6 +201,19 @@
 
   function setupForm(form, room) {
     const status = $('.form-status', form);
+    // Dortoir : total = prix du lit × nombre de lits
+    const total = $('#rd-total', form);
+    if (total) {
+      const upd = () => {
+        const n = +form.elements.persons.value;
+        const nights = form.elements.nights.value;
+        const p = nights === 'sat' ? room.price_sat : nights === 'both' ? room.price_both : null;
+        total.hidden = p === null || p === undefined;
+        if (!total.hidden) total.textContent = `Total : ${euro(p * n)} (${lits(n)} × ${euro(p)})`;
+      };
+      form.addEventListener('change', upd);
+      upd();
+    }
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       status.className = 'form-status';

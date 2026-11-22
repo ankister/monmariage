@@ -319,7 +319,15 @@ code { background: #f1ece3; padding: .05rem .3rem; border-radius: 4px; font-size
 .rr-main { display: flex; align-items: center; gap: .75rem; background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; min-width: 0; }
 .rr-thumb { flex: none; width: 56px; height: 56px; border-radius: 10px; overflow: hidden; background: #efe9df; display: grid; place-items: center; font-size: 1.3rem; }
 .rr-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.rr-prices { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.rr-prices { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: .5rem; align-items: end; }
+.rr-mode select { width: 100%; min-height: 44px; padding: .4rem .5rem; border: 1.5px solid var(--line); border-radius: 10px; font: 400 .95rem var(--sans); background: var(--surface); color: var(--ink); }
+.rooms-total { margin-top: 1.25rem; }
+.rooms-total h2 { margin: 0 0 .2rem; }
+.rt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
+.rt-cell { border: 1px solid var(--line); border-radius: 12px; padding: .8rem 1rem; display: flex; flex-direction: column; gap: .2rem; background: #fcfbf8; }
+.rt-label { font-weight: 700; display: flex; flex-direction: column; }
+.rt-label small { font-weight: 400; color: var(--muted); }
+.rt-sum { font-family: var(--serif); font-size: 2rem; font-weight: 400; line-height: 1.1; color: var(--accent); }
 .rr-prices label { display: flex; flex-direction: column; gap: .2rem; font-size: .75rem; font-weight: 700; color: var(--muted); }
 .euro { position: relative; display: block; }
 .euro::after { content: '€'; position: absolute; right: .7rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 700; }
@@ -345,7 +353,7 @@ code { background: #f1ece3; padding: .05rem .3rem; border-radius: 4px; font-size
 
 @media (min-width: 640px) {
   .room-row { flex-direction: row; align-items: center; justify-content: space-between; }
-  .rr-prices { width: 260px; flex: none; }
+  .rr-prices { width: 380px; flex: none; }
 }
 
 /* ---------- Tablette ---------- */

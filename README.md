@@ -344,7 +344,7 @@ location /api/admin/ {
 
 | Je veux… | Où |
 |---|---|
-| Fixer le prix des chambres sur place | **Chambres → Chambres & prix** (2 nuits / samedi seul, enregistrement automatique) |
+| Fixer le prix des chambres sur place | **Chambres → Chambres & prix** (2 nuits / samedi seul, **par chambre ou par lit** pour les dortoirs, total en bas de la liste, enregistrement automatique) |
 | Ajouter des photos d'une chambre | **Chambres → Chambres & prix → toucher la chambre → + Ajouter des photos** |
 | Valider une réservation de chambre | **Chambres → Réservations → Valider** |
 | Libérer une chambre | **Chambres → Réservations → Annuler** (la chambre redevient disponible) |

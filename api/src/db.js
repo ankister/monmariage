@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   description  TEXT NOT NULL DEFAULT '',
   price_both   REAL,                            -- prix de la chambre pour vendredi + samedi
   price_sat    REAL,                            -- prix de la chambre pour le samedi seul
+  price_mode   TEXT NOT NULL DEFAULT 'room',    -- room = prix de la chambre entière | bed = prix par lit (dortoir)
   bookable     INTEGER NOT NULL DEFAULT 1,      -- 0 = non proposée (ex. réservée aux mariés)
   x REAL NOT NULL DEFAULT 0, y REAL NOT NULL DEFAULT 0, w REAL NOT NULL DEFAULT 100, h REAL NOT NULL DEFAULT 100,
   bed_icon     TEXT NOT NULL DEFAULT 'double',
@@ -166,6 +167,11 @@ CREATE TABLE IF NOT EXISTS sessions (
 const guestCols = db.prepare('PRAGMA table_info(guests)').all().map((c) => c.name);
 if (!guestCols.includes('veggie')) {
   db.exec('ALTER TABLE guests ADD COLUMN veggie INTEGER NOT NULL DEFAULT 0'); // nombre de menus végétariens
+}
+
+const roomCols = db.prepare('PRAGMA table_info(rooms)').all().map((c) => c.name);
+if (!roomCols.includes('price_mode')) {
+  db.exec("ALTER TABLE rooms ADD COLUMN price_mode TEXT NOT NULL DEFAULT 'room'"); // room | bed (dortoir loué au lit)
 }
 
 /* ---------- Données d'exemple au premier démarrage ---------- */
@@ -258,8 +264,30 @@ function roomsWithStatus() {
     baby_bed: !!r.baby_bed,
     bookable: !!r.bookable,
     photos: photos.filter((p) => p.room_id === r.id).map((p) => ({ id: p.id, url: `/api/media/rooms/${p.filename}` })),
-    booking: active.find((b) => b.room_id === r.id) || null,
+    ...occupancy(r, active.filter((b) => b.room_id === r.id)),
   }));
+}
+
+/** Occupation d'une chambre : entière (une seule réservation) ou au lit (dortoir, plusieurs réservations). */
+function occupancy(r, bookings) {
+  const perBed = r.price_mode === 'bed';
+  const bedsTaken = bookings.reduce((s, b) => s + b.persons, 0);
+  const bedsFree = perBed ? Math.max(0, r.capacity - bedsTaken) : (bookings.length ? 0 : r.capacity);
+  return {
+    per_bed: perBed,
+    bookings,
+    booking: bookings[0] || null,
+    beds_taken: bedsTaken,
+    beds_free: bedsFree,
+    full: perBed ? bedsFree === 0 : bookings.length > 0,
+  };
+}
+
+/** Montant d'une réservation : prix de la chambre, ou prix du lit × nombre de lits. */
+function bookingAmount(b) {
+  const p = b.nights === 'sat' ? b.price_sat : b.price_both;
+  if (p === null || p === undefined) return null;
+  return b.price_mode === 'bed' ? Math.round(p * b.persons * 100) / 100 : p;
 }
 
 function isPlainObject(v) {
@@ -273,4 +301,4 @@ function deepMerge(base, over) {
   return out;
 }
 
-module.exports = { db, DATA_DIR, MEDIA_DIR, getContent, setContent, getPrivate, setPrivate, gitesWithAvailability, roomsWithStatus };
+module.exports = { db, DATA_DIR, MEDIA_DIR, getContent, setContent, getPrivate, setPrivate, gitesWithAvailability, roomsWithStatus, bookingAmount };
