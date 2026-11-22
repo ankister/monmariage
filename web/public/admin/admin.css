@@ -638,3 +638,8 @@ code { background: #f1ece3; padding: .05rem .3rem; border-radius: 4px; font-size
 .stay-banner { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: .6rem .9rem; margin: 0 0 1rem; }
 .stay-banner small { color: var(--muted); }
 .booking.waitlist { opacity: .92; border-left: 4px solid #8c7bb8; }
+.pill-rank { background: #efe9fb; color: #4b3a82; border: 1px solid #d6cbef; }
+.wl-group { list-style: none; border: 1px solid var(--line); border-radius: 12px; padding: .8rem; background: #faf8fd; }
+.wl-group h3 { font-family: var(--sans); font-size: 1rem; margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; }
+.wl-group h3 small { font-weight: 400; color: var(--muted); font-size: .85rem; }
+.wl-queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }

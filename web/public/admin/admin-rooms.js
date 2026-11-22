@@ -107,13 +107,28 @@
       <ul class="bookings room-bookings" id="rb-list"></ul>
       <section class="panel mail-panel" id="mail-panel" aria-labelledby="mail-title"><p class="muted">Chargement des réglages d’e-mail…</p></section>`;
     renderMailPanel($('#mail-panel'));
-    const draw = () => {
-      const list = bookings.filter((b) => statusFilter === 'all' || b.status === statusFilter);
-      $('#rb-list').innerHTML = list.map((b) => `
+    // Liste d'attente : rang de chaque demande pour sa chambre, par ordre d'arrivée
+    const chrono = (a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : a.id - b.id);
+    const queues = new Map(); // room_id → demandes en attente, de la plus ancienne à la plus récente
+    bookings.filter((b) => b.status === 'waitlist').sort(chrono).forEach((b) => {
+      if (!queues.has(b.room_id)) queues.set(b.room_id, []);
+      queues.get(b.room_id).push(b);
+    });
+    const rankOf = (b) => {
+      const q = queues.get(b.room_id) || [];
+      return { rank: q.indexOf(b) + 1, total: q.length };
+    };
+    const rankPill = (b) => {
+      if (b.status !== 'waitlist') return '';
+      const { rank, total } = rankOf(b);
+      return total > 1 ? `<span class="pill pill-rank" title="Ordre d’arrivée des demandes pour cette chambre">${rank === 1 ? '1re' : `${rank}e`} demande sur ${total}</span>` : '';
+    };
+    const item = (b) => `
         <li class="booking ${b.status}">
           <div class="booking-main">
             <strong>${esc(b.room_name)}</strong> — ${esc(fullName(b))} · ${whoCount(b)}
             <span class="pill ${STATUS[b.status].cls}">${STATUS[b.status].label}</span>
+            ${rankPill(b)}
             ${b.priority ? '<span class="pill pill-prio" title="Nom reconnu parmi la famille et les témoins (liste des invités)">⭐ Famille / témoin</span>' : ''}
             <small>🌙 ${esc(nights[b.nights])} · ${esc(euro(priceOf(b), 'prix non défini'))}${b.price_mode === 'bed' && unitOf(b) !== null ? ` (${b.persons} × ${esc(euro(unitOf(b)))})` : ''}
               ${[b.email, b.phone].filter(Boolean).map((x) => ' · ' + esc(x)).join('')}</small>
@@ -131,8 +146,32 @@
             ${b.status !== 'cancelled' ? `<button class="btn btn-small btn-ghost" data-set="cancelled" data-id="${b.id}">Annuler</button>` : ''}
             <button class="btn btn-small btn-ghost" data-edit="${b.id}" aria-label="Modifier la réservation de ${esc(fullName(b))}">✏️</button>
           </div>
-        </li>`).join('') || '<li class="empty">Aucune réservation.</li>';
-      $$('[data-set]', pane).forEach((btn) => btn.addEventListener('click', () => setStatus(+btn.dataset.id, btn.dataset.set)));
+        </li>`;
+    const draw = () => {
+      const list = bookings.filter((b) => statusFilter === 'all' || b.status === statusFilter);
+      if (statusFilter === 'waitlist') {
+        // Regroupée par chambre souhaitée, dans l'ordre d'arrivée des demandes
+        const roomOrder = new Map(rooms.map((r, i) => [r.id, i]));
+        const groups = [...queues.entries()].sort((a, b) => (roomOrder.get(a[0]) ?? 0) - (roomOrder.get(b[0]) ?? 0));
+        $('#rb-list').innerHTML = groups.map(([roomId, q]) => {
+          const room = rooms.find((r) => r.id === roomId);
+          return `<li class="wl-group"><h3>${esc(room?.name || q[0].room_name)}
+              <small>${A.plural(q.length, 'demande', 'demandes')}${q.length > 1 ? ', par ordre d’arrivée' : ''}
+              · ${room?.full ? '<b class="warn-text">chambre déjà prise</b>' : 'chambre libre'}</small></h3>
+            <ol class="wl-queue">${q.map(item).join('')}</ol></li>`;
+        }).join('') || '<li class="empty">Aucune demande en liste d’attente.</li>';
+      } else {
+        $('#rb-list').innerHTML = list.map(item).join('') || '<li class="empty">Aucune réservation.</li>';
+      }
+      $$('[data-set]', pane).forEach((btn) => btn.addEventListener('click', async () => {
+        const b = bookings.find((x) => x.id === +btn.dataset.id);
+        // Accepter une demande alors qu'une plus ancienne attend la même chambre : on demande confirmation
+        if (btn.dataset.set === 'pending' && b?.status === 'waitlist') {
+          const first = (queues.get(b.room_id) || [])[0];
+          if (first && first !== b && !(await A.confirmBox('Une demande plus ancienne attend', `${fullName(first)} a demandé « ${b.room_name} » le ${A.fmtDateTime(first.created_at)}, avant ${fullName(b)}. Accepter quand même cette demande ?`, { ok: 'Accepter quand même' }))) return;
+        }
+        setStatus(+btn.dataset.id, btn.dataset.set);
+      }));
       $$('[data-mail]', pane).forEach((btn) => btn.addEventListener('click', async () => {
         btn.disabled = true;
         try {
