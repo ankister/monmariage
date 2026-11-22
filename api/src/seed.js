@@ -65,7 +65,7 @@ function defaultContent() {
       venue: 'Domaine de la réception (exemple)',
       intro:
         'Le domaine où a lieu la réception compte 21 chambres. Choisissez la vôtre sur le plan, puis indiquez vos nuits : vendredi et samedi, ou samedi uniquement.',
-      note: 'Les modalités de règlement vous seront communiquées une fois votre réservation validée.',
+      note: 'Les modalités de règlement vous seront communiquées par mail rapidement.',
     },
   };
 }

@@ -13,6 +13,7 @@
 
   const STATUS = {
     pending: { label: 'En attente', cls: 'pill-wait' },
+    payment: { label: 'Règlement en cours', cls: 'pill-pay' },
     confirmed: { label: 'Confirmée', cls: 'pill-ok' },
     cancelled: { label: 'Annulée', cls: 'pill-no' },
   };
@@ -44,6 +45,7 @@
     const offered = rooms.filter((r) => r.bookable);
     const taken = offered.filter((r) => r.full).length;
     const pending = bookings.filter((b) => b.status === 'pending').length;
+    const paying = bookings.filter((b) => b.status === 'payment').length;
     const persons = active.reduce((s, b) => s + b.persons, 0);
     const amount = active.reduce((s, b) => s + (priceOf(b) || 0), 0);
     const missingPrices = offered.filter((r) => r.price_both === null || r.price_sat === null).length;
@@ -61,7 +63,7 @@
       <div class="stats">
         <div class="stat"><span class="stat-num">${taken}<small>/${offered.length}</small></span><span class="stat-label">chambres réservées</span></div>
         <div class="stat stat-ok"><span class="stat-num">${persons}</span><span class="stat-label">personnes logées</span></div>
-        <div class="stat stat-wait"><span class="stat-num">${pending}</span><span class="stat-label">à valider</span></div>
+        <div class="stat stat-wait"><span class="stat-num">${pending}<small>${paying ? ` +${paying}` : ''}</small></span><span class="stat-label">à valider${paying ? ` · ${paying} règlement${paying > 1 ? 's' : ''} en cours` : ''}</span></div>
         <div class="stat"><span class="stat-num stat-money">${esc(euro(amount, '0 €'))}</span><span class="stat-label">montant attendu</span></div>
       </div>
       ${missingPrices ? `<p class="notice">💶 ${A.plural(missingPrices, 'chambre n’a', 'chambres n’ont')} pas encore tous ses prix. Renseignez-les dans « Chambres &amp; prix ».</p>` : ''}
@@ -84,14 +86,16 @@
 
   /* ---------- Réservations ---------- */
   function renderBookings(pane, bookings, rooms, nights) {
-    const counts = { all: bookings.length, pending: 0, confirmed: 0, cancelled: 0 };
+    const counts = { all: bookings.length, pending: 0, payment: 0, confirmed: 0, cancelled: 0 };
     bookings.forEach((b) => counts[b.status]++);
     pane.innerHTML = `
       <div class="chips" role="group" aria-label="Filtrer par statut">
-        ${[['all', 'Toutes'], ['pending', 'En attente'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']]
+        ${[['all', 'Toutes'], ['pending', 'En attente'], ['payment', 'Règlement en cours'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']]
           .map(([k, l]) => `<button class="chip" data-st="${k}" aria-pressed="${statusFilter === k}">${l} <span>${counts[k]}</span></button>`).join('')}
       </div>
-      <ul class="bookings room-bookings" id="rb-list"></ul>`;
+      <ul class="bookings room-bookings" id="rb-list"></ul>
+      <section class="panel mail-panel" id="mail-panel" aria-labelledby="mail-title"><p class="muted">Chargement des réglages d’e-mail…</p></section>`;
+    renderMailPanel($('#mail-panel'));
     const draw = () => {
       const list = bookings.filter((b) => statusFilter === 'all' || b.status === statusFilter);
       $('#rb-list').innerHTML = list.map((b) => `
@@ -103,14 +107,28 @@
               ${[b.email, b.phone].filter(Boolean).map((x) => ' · ' + esc(x)).join('')}</small>
             ${b.message ? `<small class="quote">« ${esc(b.message)} »</small>` : ''}
             ${b.notes ? `<small>📝 ${esc(b.notes)}</small>` : ''}
+            ${b.mail_sent_at ? `<small>📧 Mail de règlement envoyé le ${A.fmtDateTime(b.mail_sent_at)}</small>` : ''}
           </div>
           <div class="booking-actions">
-            ${b.status !== 'confirmed' ? `<button class="btn btn-small btn-primary" data-set="confirmed" data-id="${b.id}">Valider</button>` : ''}
+            ${b.status === 'pending' ? `<button class="btn btn-small btn-pay" data-set="payment" data-id="${b.id}" title="Passe la réservation en « Règlement en cours » et envoie le mail à l’invité">Règlement en cours</button>` : ''}
+            ${b.status === 'payment' ? `<button class="btn btn-small btn-ghost" data-mail="${b.id}" title="Renvoyer le mail de règlement">📧 Renvoyer</button>` : ''}
+            ${b.status !== 'confirmed' ? `<button class="btn btn-small btn-primary" data-set="confirmed" data-id="${b.id}">${b.status === 'payment' ? 'Payé · Valider' : 'Valider'}</button>` : ''}
             ${b.status !== 'cancelled' ? `<button class="btn btn-small btn-ghost" data-set="cancelled" data-id="${b.id}">Annuler</button>` : ''}
             <button class="btn btn-small btn-ghost" data-edit="${b.id}" aria-label="Modifier la réservation de ${esc(fullName(b))}">✏️</button>
           </div>
         </li>`).join('') || '<li class="empty">Aucune réservation.</li>';
       $$('[data-set]', pane).forEach((btn) => btn.addEventListener('click', () => setStatus(+btn.dataset.id, btn.dataset.set)));
+      $$('[data-mail]', pane).forEach((btn) => btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          const r = await A.call(`/admin/room-bookings/${btn.dataset.mail}/mail`, { method: 'POST', body: {} });
+          A.toast(`Mail renvoyé à ${r.to}`);
+          roomsView();
+        } catch (err) {
+          A.toast(err.message, 'error');
+          btn.disabled = false;
+        }
+      }));
       $$('[data-edit]', pane).forEach((btn) => btn.addEventListener('click', () =>
         editBooking(bookings.find((x) => x.id === +btn.dataset.edit), rooms, nights)));
     };
@@ -122,10 +140,23 @@
     draw();
   }
 
+  /** Message selon le résultat de l'envoi automatique du mail de règlement. */
+  function mailToast(r) {
+    if (!r || !r.mail) return false;
+    if (r.mail === 'sent') A.toast(`Règlement en cours : mail envoyé à ${r.to}`);
+    else if (r.mail === 'no-email') A.toast('Règlement en cours enregistré, mais pas de mail : cette réservation n’a pas d’adresse e-mail.', 'error');
+    else if (r.mail === 'not-configured') A.toast('Règlement en cours enregistré, mais le mail n’est pas parti : configurez le bloc « Mail » ci-dessous.', 'error');
+    else A.toast(`Règlement en cours enregistré, mais le mail n’est pas parti : ${r.mail_error}`, 'error');
+    return true;
+  }
+
   async function setStatus(id, status) {
     try {
-      await A.call(`/admin/room-bookings/${id}`, { method: 'PUT', body: { status } });
-      A.toast(status === 'confirmed' ? 'Réservation confirmée' : 'Réservation annulée : la chambre est de nouveau libre');
+      const r = await A.call(`/admin/room-bookings/${id}`, { method: 'PUT', body: { status } });
+      if (!mailToast(r)) {
+        A.toast(status === 'confirmed' ? 'Réservation confirmée' : status === 'payment' ? 'Règlement en cours'
+          : 'Réservation annulée : la chambre est de nouveau libre');
+      }
       roomsView();
     } catch (err) {
       A.toast(err.message, 'error');
@@ -156,13 +187,180 @@
              ${b ? `<p class="muted small">Demande reçue le ${A.fmtDateTime(b.created_at)}</p>` : ''}`,
       onSubmit: async (root) => {
         const data = A.readForm(root, fields);
-        if (b) await A.call(`/admin/room-bookings/${b.id}`, { method: 'PUT', body: data });
-        else await A.call('/admin/room-bookings', { method: 'POST', body: data });
-        A.toast('Réservation enregistrée');
+        const r = b ? await A.call(`/admin/room-bookings/${b.id}`, { method: 'PUT', body: data })
+          : await A.call('/admin/room-bookings', { method: 'POST', body: data });
+        if (!mailToast(r)) A.toast('Réservation enregistrée');
         roomsView();
       },
       onDelete: b ? async () => { await A.call(`/admin/room-bookings/${b.id}`, { method: 'DELETE' }); A.toast('Réservation supprimée'); roomsView(); } : null,
     });
+  }
+
+  /* ---------- Bloc « Mail » : serveur d'envoi et modèle du mail de règlement ---------- */
+  const SMTP_PRESETS = {
+    gmail: { label: 'Gmail', host: 'smtp.gmail.com', port: 465, security: 'ssl', help: 'Utilisez un « mot de passe d’application » Google (validation en 2 étapes requise), pas votre mot de passe habituel.' },
+    ovh: { label: 'OVH (e-mail de domaine)', host: 'ssl0.ovh.net', port: 465, security: 'ssl', help: 'Identifiant : l’adresse e-mail complète.' },
+    outlook: { label: 'Outlook / Hotmail', host: 'smtp-mail.outlook.com', port: 587, security: 'starttls', help: 'Microsoft peut bloquer l’envoi SMTP sur les comptes personnels : préférez Gmail ou votre hébergeur.' },
+    orange: { label: 'Orange', host: 'smtp.orange.fr', port: 465, security: 'ssl', help: 'Identifiant : l’adresse e-mail Orange complète.' },
+    free: { label: 'Free', host: 'smtp.free.fr', port: 465, security: 'ssl', help: 'Activez l’envoi SMTP authentifié dans l’espace abonné Free.' },
+    icloud: { label: 'iCloud', host: 'smtp.mail.me.com', port: 587, security: 'starttls', help: 'Utilisez un mot de passe pour app créé sur appleid.apple.com.' },
+  };
+  const VARS = [
+    ['prenom', 'Prénom de l’invité'], ['nom', 'Nom'], ['chambre', 'Chambre ou dortoir'], ['quantite', '« 2 personnes » ou « 3 lits »'],
+    ['nuits', 'Nuits réservées'], ['montant', 'Montant à régler'], ['couple', 'Vos prénoms'], ['date_mariage', 'Date du mariage'],
+  ];
+  let SAMPLE = {}; // réservation fictive fournie par l'API (vos prénoms, la vraie date)
+  const fillSample = (t, html) => String(t).replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (m, k) => {
+    const v = SAMPLE[k.toLowerCase()];
+    return v === undefined ? m : html ? esc(v) : v;
+  });
+
+  async function renderMailPanel(box) {
+    let data;
+    try { data = await A.call('/admin/mail-settings'); } catch (err) { box.innerHTML = `<p class="error">${esc(err.message)}</p>`; return; }
+    const { smtp, template, default_template: def } = data;
+    SAMPLE = data.sample || {};
+    box.innerHTML = `
+      <h2 id="mail-title">✉️ Mail</h2>
+      <p class="muted small">Quand une réservation passe en <b>« Règlement en cours »</b>, ce mail part automatiquement à l’adresse donnée par l’invité.
+        Les réglages sont enregistrés ici, sans variable à ajouter au conteneur.</p>
+      <div class="mail-grid">
+        <form class="mail-smtp" id="smtp-form" autocomplete="off">
+          <h3>Serveur d’envoi (SMTP)
+            <span class="pill ${smtp.configured ? 'pill-ok' : 'pill-wait'}">${smtp.configured ? 'Configuré' : 'À configurer'}</span></h3>
+          <label class="field">Préréglage
+            <select name="preset"><option value="">— Choisir un fournisseur (facultatif) —</option>
+              ${Object.entries(SMTP_PRESETS).map(([k, p]) => `<option value="${k}">${esc(p.label)}</option>`).join('')}</select>
+            <small class="muted" id="preset-help"></small></label>
+          <div class="grid-3">
+            <label class="field span-2">Serveur<input name="host" value="${esc(smtp.host)}" placeholder="smtp.exemple.fr" spellcheck="false"></label>
+            <label class="field">Port<input name="port" type="number" min="1" max="65535" value="${smtp.port || ''}" placeholder="465"></label>
+          </div>
+          <fieldset class="field"><legend>Sécurité</legend>
+            <div class="seg-radio">
+              ${[['ssl', 'SSL/TLS (465)'], ['starttls', 'STARTTLS (587)'], ['none', 'Aucune']].map(([v, l]) =>
+                `<label><input type="radio" name="security" value="${v}" ${smtp.security === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}
+            </div></fieldset>
+          <div class="grid-2">
+            <label class="field">Identifiant<input name="user" value="${esc(smtp.user)}" autocomplete="off" spellcheck="false" placeholder="souvent l’adresse e-mail"></label>
+            <label class="field">Mot de passe<input name="pass" type="password" autocomplete="new-password" placeholder="${smtp.has_pass ? '•••••••• (enregistré, laisser vide pour garder)' : ''}"></label>
+          </div>
+          <div class="grid-2">
+            <label class="field">Adresse d’expédition<input name="from_email" type="email" value="${esc(smtp.from_email)}" placeholder="vous@exemple.fr"></label>
+            <label class="field">Nom affiché<input name="from_name" value="${esc(smtp.from_name)}" placeholder="ex. Les mariés"></label>
+          </div>
+          <label class="field">Adresse de réponse <small class="muted">(facultatif : si différente de l’expédition)</small>
+            <input name="reply_to" type="email" value="${esc(smtp.reply_to)}"></label>
+          <div class="row-actions">
+            <button class="btn btn-primary" type="submit">Enregistrer</button>
+            ${smtp.has_pass ? '<button class="btn btn-ghost btn-small" type="button" id="smtp-clear">Effacer le mot de passe</button>' : ''}
+          </div>
+          <div class="mail-test">
+            <label class="field">Envoyer un mail d’essai à<input name="test_to" type="email" placeholder="votre adresse" value="${esc(smtp.from_email)}"></label>
+            <button class="btn btn-ghost" type="button" id="mail-test">📨 Envoyer l’essai</button>
+          </div>
+          <p class="form-status" id="smtp-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <form class="mail-template" id="tpl-form">
+          <h3>Mail « Règlement en cours »</h3>
+          <label class="switch"><input type="checkbox" name="auto" ${template.auto ? 'checked' : ''}><span class="switch-ui" aria-hidden="true"></span>
+            <span>Envoyer automatiquement au passage en « Règlement en cours »</span></label>
+          <label class="field">Objet<input name="subject" value="${esc(template.subject)}" maxlength="300"></label>
+          <label class="field">Contenu (HTML)
+            <textarea name="html" class="code tpl-html" rows="16" spellcheck="false">${esc(template.html)}</textarea></label>
+          <details class="tpl-vars" open><summary>Variables (cliquer pour insérer)</summary>
+            <div class="chips">${VARS.map(([k, l]) => `<button type="button" class="chip" data-var="${k}" title="${esc(l)}">{{${k}}}</button>`).join('')}</div>
+            <p class="muted small">Remplacées pour chaque invité. Pensez à compléter vos <b>modalités de règlement</b> (IBAN, Lydia, chèque…).</p></details>
+          <div class="row-actions">
+            <button class="btn btn-primary" type="submit">Enregistrer le modèle</button>
+            <button class="btn btn-ghost btn-small" type="button" id="tpl-reset">Rétablir le modèle d’origine</button>
+          </div>
+          <p class="tpl-preview-title"><strong>Aperçu</strong> <small class="muted">(exemple : Camille, Chambre 3, 80 €)</small></p>
+          <p class="tpl-subject" id="tpl-subject"></p>
+          <iframe class="tpl-preview" id="tpl-preview" sandbox title="Aperçu du mail"></iframe>
+        </form>
+      </div>`;
+
+    const sf = $('#smtp-form', box), tf = $('#tpl-form', box);
+    const status = $('#smtp-status', box);
+    const say = (msg, err) => { status.textContent = msg; status.className = `form-status${err ? ' error' : ' ok'}`; };
+    sf.elements.preset.addEventListener('change', () => {
+      const p = SMTP_PRESETS[sf.elements.preset.value];
+      $('#preset-help', box).textContent = p ? p.help : '';
+      if (!p) return;
+      sf.elements.host.value = p.host;
+      sf.elements.port.value = p.port;
+      sf.elements.security.value = p.security;
+    });
+    sf.addEventListener('change', (e) => {
+      if (e.target.name !== 'security') return;
+      const ports = { ssl: 465, starttls: 587, none: 25 };
+      if (!sf.elements.port.value || Object.values(ports).includes(+sf.elements.port.value)) sf.elements.port.value = ports[e.target.value];
+    });
+    const smtpBody = () => {
+      const f = sf.elements;
+      return { host: f.host.value, port: f.port.value, security: f.security.value, user: f.user.value, pass: f.pass.value,
+        from_email: f.from_email.value, from_name: f.from_name.value, reply_to: f.reply_to.value };
+    };
+    sf.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await A.call('/admin/mail-settings/smtp', { method: 'PUT', body: smtpBody() });
+        A.toast('Réglages d’envoi enregistrés');
+        renderMailPanel(box);
+      } catch (err) { say(err.message, true); }
+    });
+    $('#smtp-clear', box)?.addEventListener('click', async () => {
+      if (!(await A.confirmBox('Effacer le mot de passe SMTP ?', 'Les mails ne pourront plus partir tant qu’un nouveau mot de passe n’est pas enregistré.'))) return;
+      await A.call('/admin/mail-settings/smtp', { method: 'PUT', body: { ...smtpBody(), pass: '', clear_pass: true } });
+      A.toast('Mot de passe effacé');
+      renderMailPanel(box);
+    });
+    $('#mail-test', box).addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      say('Enregistrement des réglages puis envoi en cours…');
+      try {
+        await A.call('/admin/mail-settings/smtp', { method: 'PUT', body: smtpBody() });
+        await A.call('/admin/mail-settings/template', { method: 'PUT', body: tplBody() });
+        await A.call('/admin/mail-settings/test', { method: 'POST', body: { to: sf.elements.test_to.value } });
+        say(`✓ Mail d’essai envoyé à ${sf.elements.test_to.value}. Vérifiez aussi le dossier « Indésirables ».`);
+      } catch (err) { say(`✗ ${err.message}`, true); }
+      btn.disabled = false;
+    });
+
+    /* Modèle */
+    const preview = () => {
+      $('#tpl-subject', box).textContent = `Objet : ${fillSample(tf.elements.subject.value, false)}`;
+      $('#tpl-preview', box).srcdoc = `<!doctype html><meta charset="utf-8"><body style="margin:16px;background:#fff">${fillSample(tf.elements.html.value, true)}</body>`;
+    };
+    const tplBody = () => ({ subject: tf.elements.subject.value, html: tf.elements.html.value, auto: tf.elements.auto.checked });
+    let t = 0;
+    tf.addEventListener('input', () => { clearTimeout(t); t = setTimeout(preview, 250); });
+    tf.addEventListener('click', (e) => {
+      const v = e.target.closest('[data-var]');
+      if (!v) return;
+      const ta = tf.elements.html, tag = `{{${v.dataset.var}}}`;
+      const [a, b] = [ta.selectionStart ?? ta.value.length, ta.selectionEnd ?? ta.value.length];
+      ta.setRangeText(tag, a, b, 'end');
+      ta.focus();
+      preview();
+    });
+    tf.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await A.call('/admin/mail-settings/template', { method: 'PUT', body: tplBody() });
+        A.toast('Modèle de mail enregistré');
+      } catch (err) { A.toast(err.message, 'error'); }
+    });
+    $('#tpl-reset', box).addEventListener('click', async () => {
+      if (!(await A.confirmBox('Rétablir le modèle d’origine ?', 'Votre objet et votre contenu actuels seront remplacés (pas encore enregistrés).'))) return;
+      tf.elements.subject.value = def.subject;
+      tf.elements.html.value = def.html;
+      preview();
+    });
+    preview();
   }
 
   /* ---------- Chambres & prix (édition rapide des prix) ---------- */

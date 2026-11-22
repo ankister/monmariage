@@ -162,11 +162,20 @@
           </fieldset>
           ${r.per_bed ? '<p class="rd-total" id="rd-total" aria-live="polite" hidden></p>' : ''}
           <div class="grid-2">
-            <label class="field">E-mail <small class="opt">(facultatif)</small><input name="email" type="email" autocomplete="email" maxlength="200"></label>
+            <label class="field">E-mail<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
             <label class="field">Téléphone <small class="opt">(facultatif)</small><input name="phone" type="tel" autocomplete="tel" maxlength="40"></label>
           </div>
           <label class="field">Message <small class="opt">(facultatif)</small><textarea name="message" rows="2" maxlength="2000"></textarea></label>
           ${state.codeRequired ? `<label class="field">Code d'invitation<input name="code" required autocomplete="off" maxlength="100" placeholder="Indiqué sur votre faire-part"></label>` : ''}
+          <div class="field captcha">
+            <span class="captcha-title">Vérification anti-robot</span>
+            <div class="captcha-row">
+              <label class="captcha-q" for="rd-captcha-answer" id="rd-captcha-question">Chargement…</label>
+              <input id="rd-captcha-answer" name="captcha_answer" inputmode="numeric" autocomplete="off" required maxlength="3" aria-describedby="rd-captcha-question">
+              <button type="button" class="captcha-new" id="rd-captcha-new" aria-label="Autre question">↻</button>
+            </div>
+            <input type="hidden" name="captcha_token">
+          </div>
           <div class="hp" aria-hidden="true"><label>Site web <input name="website" tabindex="-1" autocomplete="off"></label></div>
           <button class="btn btn-primary" type="submit">Envoyer ma demande</button>
           <p class="form-status" role="status" aria-live="polite"></p>
@@ -199,8 +208,23 @@
     track.addEventListener('scroll', () => { if (count) count.textContent = `${index() + 1} / ${n}`; }, { passive: true });
   }
 
+  /** Captcha maison (même question de calcul que le formulaire de réponse). */
+  async function loadCaptcha(form) {
+    const q = $('#rd-captcha-question', form);
+    try {
+      const c = await api('/captcha');
+      q.textContent = c.question;
+      form.elements.captcha_token.value = c.token;
+      form.elements.captcha_answer.value = '';
+    } catch {
+      q.textContent = 'Question indisponible, réessayez.';
+    }
+  }
+
   function setupForm(form, room) {
     const status = $('.form-status', form);
+    loadCaptcha(form);
+    $('#rd-captcha-new', form).addEventListener('click', () => loadCaptcha(form));
     // Dortoir : total = prix du lit × nombre de lits
     const total = $('#rd-total', form);
     if (total) {
@@ -233,6 +257,7 @@
       } catch (err) {
         status.textContent = err.message;
         status.classList.add('error');
+        loadCaptcha(form); // chaque question ne sert qu'une fois
         if (err.status === 409) await load();
       } finally {
         btn.disabled = false;

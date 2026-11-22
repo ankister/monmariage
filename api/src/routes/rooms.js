@@ -11,6 +11,8 @@ const crypto = require('node:crypto');
 const express = require('express');
 const { db, MEDIA_DIR, getContent, getPrivate, roomsWithStatus, bookingAmount } = require('../db');
 const { HttpError, str, int, oneOf, email, rateLimit, toCsv, imageType } = require('../util');
+const { verifyCaptcha } = require('../captcha');
+const mailer = require('../mailer');
 
 const NIGHTS = ['both', 'sat'];
 
@@ -89,6 +91,7 @@ publicRouter.post('/room-bookings', rateLimit('room', 10, 10 * 60_000), (req, re
   }
   const content = getContent();
   if (!content.onsite.open) throw new HttpError(403, 'Les réservations de chambres sont closes. Contactez-nous directement.');
+  verifyCaptcha(b.captcha_token, b.captcha_answer);
   const d = {
     room_id: int(b.room_id, 1, 1e9, 'Chambre'),
     first_name: str(b.first_name, 80),
@@ -100,13 +103,14 @@ publicRouter.post('/room-bookings', rateLimit('room', 10, 10 * 60_000), (req, re
     message: str(b.message, 2000),
   };
   if (!d.first_name || !d.last_name) throw new HttpError(400, 'Merci d’indiquer votre prénom et votre nom.');
+  if (!d.email) throw new HttpError(400, 'Merci d’indiquer votre adresse e-mail : les modalités de règlement vous y seront envoyées.');
   if (!d.nights) throw new HttpError(400, 'Merci de choisir vos nuits.');
   const room = bookRoomTx(d);
   const labels = nightLabels(content);
   const what = room.price_mode === 'bed' ? `${d.persons} lit${d.persons > 1 ? 's' : ''} dans « ${room.name} »` : `« ${room.name} »`;
   res.json({
     ok: true,
-    message: `Merci ${d.first_name} ! Votre demande pour ${what} (${labels[d.nights].toLowerCase()}) est enregistrée. Nous vous confirmerons la réservation rapidement.`,
+    message: `Merci ${d.first_name} ! Votre demande pour ${what} (${labels[d.nights].toLowerCase()}) est enregistrée.`,
   });
 });
 
@@ -209,6 +213,27 @@ adminRouter.put('/photos/:id/move', (req, res) => {
 });
 
 /* ---------- Réservations ---------- */
+const STATUSES = ['pending', 'payment', 'confirmed', 'cancelled'];
+const bookingRow = (id) => {
+  const b = db.prepare(`SELECT b.*, r.name AS room_name, r.floor, r.price_both, r.price_sat, r.price_mode FROM room_bookings b
+                        JOIN rooms r ON r.id = b.room_id WHERE b.id = ?`).get(id);
+  return b && { ...b, amount: bookingAmount(b) };
+};
+
+/** Envoie le mail « règlement en cours » ; renvoie l'état de l'envoi sans faire échouer l'enregistrement. */
+async function paymentMail(id) {
+  const b = bookingRow(id);
+  if (!b) return { mail: 'error', mail_error: 'Réservation introuvable.' };
+  if (!b.email) return { mail: 'no-email' };
+  if (!mailer.isConfigured()) return { mail: 'not-configured' };
+  try {
+    await mailer.sendPaymentMail(b, nightLabels(getContent()));
+    db.prepare("UPDATE room_bookings SET mail_sent_at = datetime('now') WHERE id = ?").run(id);
+    return { mail: 'sent', to: b.email };
+  } catch (err) {
+    return { mail: 'error', mail_error: err.message };
+  }
+}
 function bookingFrom(b, cur = {}) {
   const v = { ...cur, ...b };
   const d = {
@@ -221,7 +246,7 @@ function bookingFrom(b, cur = {}) {
     nights: oneOf(v.nights, NIGHTS, 'both'),
     message: str(v.message, 2000),
     notes: str(v.notes, 2000),
-    status: oneOf(v.status, ['pending', 'confirmed', 'cancelled'], 'pending'),
+    status: oneOf(v.status, STATUSES, 'pending'),
   };
   if (!d.first_name && !d.last_name) throw new HttpError(400, 'Le nom est obligatoire.');
   return d;
@@ -253,17 +278,19 @@ adminRouter.get('/room-bookings', (req, res) => {
     .map((b) => ({ ...b, amount: bookingAmount(b) })));
 });
 
-adminRouter.post('/room-bookings', (req, res) => {
+adminRouter.post('/room-bookings', async (req, res) => {
   const d = bookingFrom(req.body || {});
   const info = db.transaction(() => {
     checkRoomFree(d);
     return db.prepare(`INSERT INTO room_bookings (room_id, first_name, last_name, email, phone, persons, nights, message, notes, status)
                        VALUES (@room_id, @first_name, @last_name, @email, @phone, @persons, @nights, @message, @notes, @status)`).run(d);
   })();
-  res.json({ id: info.lastInsertRowid });
+  const id = Number(info.lastInsertRowid);
+  const mail = d.status === 'payment' && mailer.getTemplate().auto ? await paymentMail(id) : {};
+  res.json({ id, ...mail });
 });
 
-adminRouter.put('/room-bookings/:id', (req, res) => {
+adminRouter.put('/room-bookings/:id', async (req, res) => {
   const id = int(req.params.id, 1, 1e9);
   const cur = db.prepare('SELECT * FROM room_bookings WHERE id = ?').get(id);
   if (!cur) throw new HttpError(404, 'Réservation introuvable.');
@@ -274,6 +301,42 @@ adminRouter.put('/room-bookings/:id', (req, res) => {
                 persons=@persons, nights=@nights, message=@message, notes=@notes, status=@status, updated_at=datetime('now')
                 WHERE id=@id`).run({ ...d, id });
   })();
+  // Passage à « règlement en cours » : mail automatique à l'invité
+  const mail = d.status === 'payment' && cur.status !== 'payment' && mailer.getTemplate().auto ? await paymentMail(id) : {};
+  res.json({ ok: true, ...mail });
+});
+
+/** Renvoi manuel du mail « règlement ». */
+adminRouter.post('/room-bookings/:id/mail', async (req, res) => {
+  const r = await paymentMail(int(req.params.id, 1, 1e9));
+  if (r.mail === 'no-email') throw new HttpError(400, 'Cette réservation n’a pas d’adresse e-mail.');
+  if (r.mail === 'not-configured') throw new HttpError(400, 'Configurez d’abord le serveur d’envoi (bloc « Mail »).');
+  if (r.mail === 'error') throw new HttpError(502, r.mail_error);
+  res.json({ ok: true, ...r });
+});
+
+/* ---------- Mail : réglages SMTP et modèle ---------- */
+adminRouter.get('/mail-settings', (req, res) => {
+  res.json({ smtp: mailer.publicSmtp(), template: mailer.getTemplate(), default_template: mailer.DEFAULT_TEMPLATE, sample: sampleVars() });
+});
+adminRouter.put('/mail-settings/smtp', (req, res) => {
+  mailer.setSmtp(req.body || {});
+  res.json({ ok: true, smtp: mailer.publicSmtp() });
+});
+adminRouter.put('/mail-settings/template', (req, res) => {
+  mailer.setTemplate(req.body || {});
+  res.json({ ok: true, template: mailer.getTemplate() });
+});
+/** Réservation fictive pour l'aperçu et le mail d'essai. */
+const sampleVars = () => mailer.bookingVars({ first_name: 'Camille', last_name: 'Exemple', room_name: 'Chambre 3', persons: 2, nights: 'both', price_mode: 'room', amount: 80 },
+  nightLabels(getContent()));
+/** Mail d'essai : le modèle rempli avec une réservation fictive. */
+adminRouter.post('/mail-settings/test', rateLimit('mail-test', 20, 10 * 60_000), async (req, res) => {
+  const to = email(req.body?.to);
+  if (!to) throw new HttpError(400, 'Indiquez l’adresse qui recevra le mail d’essai.');
+  const t = mailer.getTemplate();
+  const vars = sampleVars();
+  await mailer.sendMail(to, `[Essai] ${mailer.fill(t.subject, vars, false)}`, mailer.fill(t.html, vars, true));
   res.json({ ok: true });
 });
 
@@ -282,7 +345,7 @@ adminRouter.delete('/room-bookings/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-const STATUS = { pending: 'En attente', confirmed: 'Confirmée', cancelled: 'Annulée' };
+const STATUS = { pending: 'En attente', payment: 'Règlement en cours', confirmed: 'Confirmée', cancelled: 'Annulée' };
 adminRouter.get('/room-bookings.csv', (req, res) => {
   const labels = nightLabels(getContent());
   const rows = db.prepare(`SELECT b.*, r.name AS room_name, r.floor, r.price_both, r.price_sat, r.price_mode FROM room_bookings b

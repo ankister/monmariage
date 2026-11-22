@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS room_bookings (
   nights     TEXT NOT NULL DEFAULT 'both',    -- both = vendredi + samedi | sat = samedi seul
   message    TEXT NOT NULL DEFAULT '',
   notes      TEXT NOT NULL DEFAULT '',        -- notes internes (paiement…)
-  status     TEXT NOT NULL DEFAULT 'pending', -- pending | confirmed | cancelled
+  status     TEXT NOT NULL DEFAULT 'pending', -- pending | payment (règlement en cours) | confirmed | cancelled
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -172,6 +172,24 @@ if (!guestCols.includes('veggie')) {
 const roomCols = db.prepare('PRAGMA table_info(rooms)').all().map((c) => c.name);
 if (!roomCols.includes('price_mode')) {
   db.exec("ALTER TABLE rooms ADD COLUMN price_mode TEXT NOT NULL DEFAULT 'room'"); // room | bed (dortoir loué au lit)
+}
+
+const rbCols = db.prepare('PRAGMA table_info(room_bookings)').all().map((c) => c.name);
+if (!rbCols.includes('mail_sent_at')) {
+  db.exec('ALTER TABLE room_bookings ADD COLUMN mail_sent_at TEXT'); // dernier mail « règlement » envoyé
+}
+
+// Ancien texte par défaut sous le formulaire des chambres : remplacé par la nouvelle formulation
+{
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'content'").get();
+  const OLD_NOTE = 'Les modalités de règlement vous seront communiquées une fois votre réservation validée.';
+  if (row && row.value.includes(OLD_NOTE)) {
+    const saved = JSON.parse(row.value);
+    if (saved.onsite?.note === OLD_NOTE) {
+      saved.onsite.note = 'Les modalités de règlement vous seront communiquées par mail rapidement.';
+      db.prepare("UPDATE settings SET value = ? WHERE key = 'content'").run(JSON.stringify(saved));
+    }
+  }
 }
 
 /* ---------- Données d'exemple au premier démarrage ---------- */

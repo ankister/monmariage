@@ -105,12 +105,14 @@ function summary() {
   const items = db.prepare('SELECT * FROM budget_items ORDER BY sort, id').all();
   const bookings = roomBookings();
 
-  const roomSum = (st) => round2(bookings.filter((b) => b.status === st).reduce((s, b) => s + (b.price || 0), 0));
+  // « Règlement en cours » compte avec les réservations en attente (pas encore payées)
+  const isPending = (b) => b.status === 'pending' || b.status === 'payment';
+  const roomSum = (st) => round2(bookings.filter((b) => (st === 'pending' ? isPending(b) : b.status === st)).reduce((s, b) => s + (b.price || 0), 0));
   const rooms = {
     confirmed_total: roomSum('confirmed'),
     confirmed_count: bookings.filter((b) => b.status === 'confirmed').length,
     pending_total: roomSum('pending'),
-    pending_count: bookings.filter((b) => b.status === 'pending').length,
+    pending_count: bookings.filter(isPending).length,
     missing_price: bookings.filter((b) => b.price === null).length,
   };
   rooms.counted = settings.deduct_rooms
@@ -329,12 +331,12 @@ router.get('/budget/export.xlsx', async (req, res) => {
     { header: 'Déduit du lieu', key: 'counted', width: 14 },
   ];
   styleHeader(ch.getRow(1));
-  const counts = (b) => s.settings.deduct_rooms && (b.status === 'confirmed' || (s.settings.include_pending && b.status === 'pending'));
+  const counts = (b) => s.settings.deduct_rooms && (b.status === 'confirmed' || (s.settings.include_pending && (b.status === 'pending' || b.status === 'payment')));
   for (const b of roomBookings()) {
     ch.addRow({
       room: b.room_name, floor: b.floor === 'etage' ? 'Étage' : 'Rez-de-chaussée', name: `${b.first_name} ${b.last_name}`,
       persons: b.persons, nights: b.nights === 'sat' ? 'Samedi seul' : 'Vendredi + samedi',
-      status: b.status === 'confirmed' ? 'Validée' : 'En attente', price: b.price, counted: counts(b) ? 'Oui' : 'Non',
+      status: b.status === 'confirmed' ? 'Validée' : b.status === 'payment' ? 'Règlement en cours' : 'En attente', price: b.price, counted: counts(b) ? 'Oui' : 'Non',
     });
   }
   const chLast = Math.max(ch.rowCount, 2);
