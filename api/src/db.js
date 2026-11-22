@@ -174,6 +174,10 @@ if (!roomCols.includes('price_mode')) {
   db.exec("ALTER TABLE rooms ADD COLUMN price_mode TEXT NOT NULL DEFAULT 'room'"); // room | bed (dortoir loué au lit)
 }
 
+const roomCols2 = db.prepare('PRAGMA table_info(rooms)').all().map((c) => c.name);
+if (!roomCols2.includes('pmr')) {
+  db.exec('ALTER TABLE rooms ADD COLUMN pmr INTEGER NOT NULL DEFAULT 0'); // chambre accessible PMR
+}
 const rbCols = db.prepare('PRAGMA table_info(room_bookings)').all().map((c) => c.name);
 if (!rbCols.includes('mail_sent_at')) {
   db.exec('ALTER TABLE room_bookings ADD COLUMN mail_sent_at TEXT'); // dernier mail « règlement » envoyé
@@ -299,6 +303,7 @@ function roomsWithStatus() {
     ...r,
     private_bath: !!r.private_bath,
     baby_bed: !!r.baby_bed,
+    pmr: !!r.pmr,
     bookable: !!r.bookable,
     photos: photos.filter((p) => p.room_id === r.id).map((p) => ({ id: p.id, url: `/api/media/rooms/${p.filename}` })),
     ...occupancy(r, active.filter((b) => b.room_id === r.id)),

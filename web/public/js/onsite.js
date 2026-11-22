@@ -17,6 +17,7 @@
     available: (r) => r.available,
     private_bath: (r) => r.private_bath,
     baby_bed: (r) => r.baby_bed,
+    pmr: (r) => r.pmr,
     large: (r) => r.capacity >= 3,
   };
   const matches = (r) => FILTERS[state.filter](r);
@@ -89,6 +90,7 @@
             <span class="badge ${st === 'free' ? 'badge-ok' : 'badge-full'}">${esc(availText(r, st))}</span></span>
           <span class="rc-line">👥 ${r.per_bed ? `Dortoir · ${r.capacity} lits, réservables à l’unité` : `${r.capacity} pers. · ${esc(r.beds)}`}</span>
           <span class="rc-line">${r.private_bath ? '🚿 Salle d’eau privative' : '🚿 Sanitaires partagés'}${r.baby_bed ? ' · 👶 Lit bébé' : ''}</span>
+          ${r.pmr ? '<span class="rc-line rc-pmr">♿ Accessible PMR</span>' : ''}
           ${priceHint(r) ? `<span class="rc-price">${esc(priceHint(r))}</span>` : ''}
         </span>
       </button>`;
@@ -138,6 +140,7 @@
           <li><span aria-hidden="true">👥</span><div><small>${r.per_bed ? 'Dortoir' : 'Capacité'}</small><strong>${r.per_bed ? `${lits(r.capacity)} · ${lits(r.beds_free)} libre${r.beds_free > 1 ? 's' : ''}` : `${r.capacity} personne${r.capacity > 1 ? 's' : ''}`}</strong></div></li>
           <li><span aria-hidden="true">🛏️</span><div><small>Couchage</small><strong>${esc(r.beds)}</strong></div></li>
           <li><span aria-hidden="true">🚿</span><div><small>Sanitaires</small><strong>${esc(r.bath)}</strong></div></li>
+          ${r.pmr ? '<li class="fact-pmr"><span aria-hidden="true">♿</span><div><small>Accessibilité</small><strong>Chambre accessible PMR</strong></div></li>' : ''}
         </ul>
         ${r.description ? `<p class="pre">${esc(r.description)}</p>` : ''}
         <table class="price-table">
@@ -295,6 +298,7 @@
   async function load() {
     const data = await api('/rooms');
     state.rooms = data.rooms;
+    $(".filter-chip[data-filter=pmr]").hidden = !state.rooms.some((r) => r.pmr); // filtre affiché s’il existe une chambre PMR
     state.nights = data.nights;
     state.stay = data.stay || {};
     state.priority = data.priority || {};

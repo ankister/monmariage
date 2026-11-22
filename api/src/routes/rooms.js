@@ -55,7 +55,7 @@ publicRouter.get('/rooms', (req, res) => {
     // Aucune donnée personnelle : seulement « disponible » ou non
     rooms: roomsWithStatus().map((r) => ({
       id: r.id, code: r.code, name: r.name, short_name: r.short_name, floor: r.floor, area: r.area,
-      capacity: r.capacity, beds: r.beds, bath: r.bath, private_bath: r.private_bath, baby_bed: r.baby_bed,
+      capacity: r.capacity, beds: r.beds, bath: r.bath, private_bath: r.private_bath, baby_bed: r.baby_bed, pmr: r.pmr,
       description: r.description, price_both: r.price_both,
       per_bed: r.per_bed, beds_free: r.bookable ? r.beds_free : 0,
       available: r.bookable && !r.full, bookable: r.bookable,
@@ -168,6 +168,7 @@ adminRouter.put('/rooms/:id', (req, res) => {
     bath: has('bath') ? str(b.bath, 200) : cur.bath,
     private_bath: has('private_bath') ? (b.private_bath ? 1 : 0) : cur.private_bath,
     baby_bed: has('baby_bed') ? (b.baby_bed ? 1 : 0) : cur.baby_bed,
+    pmr: has('pmr') ? (b.pmr ? 1 : 0) : cur.pmr,
     description: has('description') ? str(b.description, 1500) : cur.description,
     price_both: has('price_both') ? price(b.price_both) : cur.price_both,
     price_sat: has('price_sat') ? price(b.price_sat) : cur.price_sat,
@@ -179,7 +180,7 @@ adminRouter.put('/rooms/:id', (req, res) => {
     if (n > 1) throw new HttpError(409, `« ${cur.name} » a ${n} réservations au lit : n’en gardez qu’une avant de la louer en entier.`);
   }
   db.prepare(`UPDATE rooms SET name=@name, short_name=@short_name, area=@area, capacity=@capacity, beds=@beds, bath=@bath,
-              private_bath=@private_bath, baby_bed=@baby_bed, description=@description, price_both=@price_both,
+              private_bath=@private_bath, baby_bed=@baby_bed, pmr=@pmr, description=@description, price_both=@price_both,
               price_sat=@price_sat, price_mode=@price_mode, bookable=@bookable WHERE id=@id`).run(next);
   res.json({ ok: true });
 });

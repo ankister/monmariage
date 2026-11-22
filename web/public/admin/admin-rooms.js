@@ -547,6 +547,7 @@
     { name: 'description', label: 'Description', type: 'textarea', full: true },
     { name: 'private_bath', label: 'Salle d’eau privative', type: 'checkbox' },
     { name: 'baby_bed', label: 'Lit bébé', type: 'checkbox' },
+    { name: 'pmr', label: '♿ Accessible PMR (personnes à mobilité réduite)', type: 'checkbox', full: true },
     { name: 'bookable', label: 'Proposée à la réservation', type: 'checkbox', full: true },
   ];
 

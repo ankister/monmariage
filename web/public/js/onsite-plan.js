@@ -83,7 +83,7 @@ window.MMPlan = (() => {
                 aria-label="${esc(r.name)}, ${r.capacity} personnes, ${state}">
         <rect class="bg" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="3"/>
         ${beds(r)}
-        <text class="name" x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="12">${esc(r.short_name)}</text>
+        <text class="name" x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="12">${esc(r.short_name)}${r.pmr ? ' ♿' : ''}</text>
         <text class="area" x="${cx}" y="${cy + 20}" text-anchor="middle" font-size="9.5">${esc(r.area)}</text>
         <rect class="pill" x="${cx - 40}" y="${cy + 28}" width="80" height="18" rx="9"/>
         <text class="pill-text" x="${cx}" y="${cy + 40.5}" text-anchor="middle" font-size="9.5">${esc(badge)}</text>

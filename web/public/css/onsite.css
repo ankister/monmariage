@@ -120,7 +120,7 @@
   .rd-inner { max-height: calc(100vh - 3rem); }
   .rd-head { padding-top: .8rem; }
   .rd-content { padding: 1.25rem 1.5rem 1.5rem; }
-  .rd-facts { grid-template-columns: repeat(3, 1fr); }
+  .rd-facts { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
   .rc-photo { width: 130px; }
 }
 .rd-total { font-weight: 700; color: var(--accent); margin: -.25rem 0 1rem; font-size: 1.05rem; }
@@ -132,3 +132,7 @@
 .rd-prio { background: #fdf6e3; border: 1px solid #ecd9a4; border-radius: 10px; padding: .7rem .9rem; margin: 0 0 1rem; font-size: .95rem; }
 .rd-success.is-waitlist > span { background: #fdf1d4; color: #8a6510; }
 .price-table th small { color: var(--muted); font-weight: 400; }
+/* Chambres accessibles PMR */
+.rc-pmr { color: #0d4a8f; font-weight: 700; }
+.rd-facts li.fact-pmr { background: #e3effc; border-color: #b6d3f3; }
+.rd-facts li.fact-pmr strong { color: #0d4a8f; }
