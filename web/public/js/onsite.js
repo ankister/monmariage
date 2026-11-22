@@ -9,7 +9,7 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-  const state = { rooms: [], nights: {}, onsite: {}, codeRequired: false, floor: 'rdc', filter: 'all', selectedId: null };
+  const state = { rooms: [], nights: {}, stay: {}, priority: {}, onsite: {}, codeRequired: false, floor: 'rdc', filter: 'all', selectedId: null };
 
   const statusOf = (r) => (!r.bookable ? 'off' : r.available ? 'free' : 'taken');
   const FILTERS = {
@@ -32,10 +32,8 @@
   const lits = (n) => `${n} lit${n > 1 ? 's' : ''}`;
   /** Prix le plus bas affichable sur une carte (« / lit » pour un dortoir). */
   function priceHint(r) {
-    const prices = [r.price_sat, r.price_both].filter((p) => p !== null && p !== undefined);
-    if (!prices.length) return '';
-    const unit = r.per_bed ? ' / lit' : '';
-    return (prices.length > 1 ? `dès ${euro(Math.min(...prices))}` : euro(prices[0])) + unit;
+    if (r.price_both === null || r.price_both === undefined) return '';
+    return `${euro(r.price_both)}${r.per_bed ? ' / lit' : ''} · ${state.stay.short}`;
   }
   /** Texte de disponibilité : « Disponible », « 3 lits libres », « Complet »… */
   const availText = (r, st) => (st === 'free' ? (r.per_bed ? `${lits(r.beds_free)} libre${r.beds_free > 1 ? 's' : ''}` : 'Disponible')
@@ -49,9 +47,16 @@
     $('#onsite-stats').innerHTML = `
       <span class="stat-chip"><strong>${free.length}</strong> chambre${free.length > 1 ? 's' : ''} disponible${free.length > 1 ? 's' : ''} sur ${bookable.length}</span>
       <span class="stat-chip"><strong>${beds}</strong> couchages au total</span>`;
+    const s = state.stay, p = state.priority;
     $('#nights-info').innerHTML = `
-      <div class="night-card"><span aria-hidden="true">🌙🌙</span><div><strong>${esc(state.nights.both)}</strong><small>2 nuits</small></div></div>
-      <div class="night-card"><span aria-hidden="true">🌙</span><div><strong>${esc(state.nights.sat)}</strong><small>1 nuit</small></div></div>`;
+      <div class="night-card stay-card"><span aria-hidden="true">${'🌙'.repeat(Math.min(s.nights || 1, 4))}</span><div>
+        <strong>Réservation pour ${esc(s.short)}</strong>
+        <small>${esc(s.label)}${s.dates ? ` · ${esc(s.dates)}` : ''}</small>
+        <small>Chaque réservation couvre tout le séjour.</small></div></div>
+      ${p.active ? `<div class="night-card prio-card"><span aria-hidden="true">⭐</span><div>
+        <strong>Priorité à la famille et aux témoins jusqu’au ${esc(p.until_label)}</strong>
+        <small>Les chambres sur place leur sont réservées en priorité. Les autres invités peuvent déjà faire une demande :
+          elle est inscrite sur liste d’attente. Réservations ouvertes à tous à partir du ${esc(p.open_label)}.</small></div></div>` : ''}`;
     $('#closed-banner').hidden = !!state.onsite.open;
     ['rdc', 'etage'].forEach((f) => {
       const list = state.rooms.filter((r) => r.floor === f && r.bookable);
@@ -137,8 +142,7 @@
         ${r.description ? `<p class="pre">${esc(r.description)}</p>` : ''}
         <table class="price-table">
           <caption>${r.per_bed ? 'Tarif par lit' : 'Tarif de la chambre'}</caption>
-          <tr><th scope="row">${esc(state.nights.both)}</th><td>${price('price_both')}${r.price_both !== null ? unit : ''}</td></tr>
-          <tr><th scope="row">${esc(state.nights.sat)}</th><td>${price('price_sat')}${r.price_sat !== null ? unit : ''}</td></tr>
+          <tr><th scope="row">${esc(state.stay.label)} <small>(${esc(state.stay.short)})</small></th><td>${price('price_both')}${r.price_both !== null ? unit : ''}</td></tr>
         </table>
 
         ${canBook ? `
@@ -151,15 +155,9 @@
           <label class="field">${r.per_bed ? 'Nombre de lits' : 'Nombre de personnes'}
             <select name="persons" required>${options.map((n) => `<option value="${n}" ${n === (r.per_bed ? 1 : Math.min(2, r.capacity)) ? 'selected' : ''}>${r.per_bed ? lits(n) : `${n} personne${n > 1 ? 's' : ''}`}</option>`).join('')}</select>
           </label>
-          <fieldset class="field">
-            <legend>Nuits</legend>
-            <div class="choice">
-              <label class="choice-item"><input type="radio" name="nights" value="both" required>
-                <span><strong>${esc(state.nights.both)}</strong><small>${r.price_both !== null ? esc(euro(r.price_both) + unit) : '2 nuits'}</small></span></label>
-              <label class="choice-item"><input type="radio" name="nights" value="sat">
-                <span><strong>${esc(state.nights.sat)}</strong><small>${r.price_sat !== null ? esc(euro(r.price_sat) + unit) : '1 nuit'}</small></span></label>
-            </div>
-          </fieldset>
+          <p class="rd-stay">🌙 Vous réservez pour <strong>${esc(state.stay.short)}</strong> : ${esc(state.stay.label.toLowerCase())}${state.stay.dates ? ` (${esc(state.stay.dates)})` : ''}.</p>
+          ${state.priority.active ? `<p class="rd-prio">⭐ Jusqu’au ${esc(state.priority.until_label)}, les chambres sont réservées en priorité à la famille et aux témoins.
+            Si vous n’en faites pas partie, votre demande sera inscrite sur liste d’attente.</p>` : ''}
           ${r.per_bed ? '<p class="rd-total" id="rd-total" aria-live="polite" hidden></p>' : ''}
           <div class="grid-2">
             <label class="field">E-mail<input name="email" type="email" autocomplete="email" required maxlength="200"></label>
@@ -230,8 +228,7 @@
     if (total) {
       const upd = () => {
         const n = +form.elements.persons.value;
-        const nights = form.elements.nights.value;
-        const p = nights === 'sat' ? room.price_sat : nights === 'both' ? room.price_both : null;
+        const p = room.price_both;
         total.hidden = p === null || p === undefined;
         if (!total.hidden) total.textContent = `Total : ${euro(p * n)} (${lits(n)} × ${euro(p)})`;
       };
@@ -249,8 +246,8 @@
       status.textContent = 'Envoi en cours…';
       try {
         const res = await api('/room-bookings', { method: 'POST', body: data });
-        form.innerHTML = `<div class="rd-success"><span aria-hidden="true">✓</span><p>${esc(res.message)}</p>
-          ${state.onsite.note ? `<p class="muted small pre">${esc(state.onsite.note)}</p>` : ''}
+        form.innerHTML = `<div class="rd-success ${res.waitlist ? 'is-waitlist' : ''}"><span aria-hidden="true">${res.waitlist ? '⏳' : '✓'}</span><p>${esc(res.message)}</p>
+          ${state.onsite.note && !res.waitlist ? `<p class="muted small pre">${esc(state.onsite.note)}</p>` : ''}
           <button type="button" class="btn btn-primary" id="rd-done">Fermer</button></div>`;
         $('#rd-done').addEventListener('click', () => dialog.close());
         await load(); // met à jour les disponibilités
@@ -299,6 +296,8 @@
     const data = await api('/rooms');
     state.rooms = data.rooms;
     state.nights = data.nights;
+    state.stay = data.stay || {};
+    state.priority = data.priority || {};
     state.onsite = data.onsite;
     state.codeRequired = data.code_required;
     refresh();

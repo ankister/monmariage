@@ -56,20 +56,21 @@ router.get('/stats', (req, res) => {
   const rooms = db.prepare(`
     SELECT COUNT(*) AS total,
            SUM(CASE WHEN r.price_mode = 'bed'
-                    THEN (SELECT COALESCE(SUM(b.persons), 0) FROM room_bookings b WHERE b.room_id = r.id AND b.status != 'cancelled') >= r.capacity
-                    ELSE EXISTS (SELECT 1 FROM room_bookings b WHERE b.room_id = r.id AND b.status != 'cancelled') END) AS taken,
+                    THEN (SELECT COALESCE(SUM(b.persons), 0) FROM room_bookings b WHERE b.room_id = r.id AND b.status NOT IN ('cancelled', 'waitlist')) >= r.capacity
+                    ELSE EXISTS (SELECT 1 FROM room_bookings b WHERE b.room_id = r.id AND b.status NOT IN ('cancelled', 'waitlist')) END) AS taken,
            SUM(r.capacity) AS beds
     FROM rooms r WHERE r.bookable = 1`).get();
   const roomBookings = db.prepare(`
     SELECT COALESCE(SUM(b.persons), 0) AS persons,
            COALESCE(SUM(b.status = 'pending'), 0) AS pending,
+           (SELECT COUNT(*) FROM room_bookings w WHERE w.status = 'waitlist') AS waitlist,
            COALESCE(SUM((CASE WHEN b.nights = 'sat' THEN r.price_sat ELSE r.price_both END)
                         * (CASE WHEN r.price_mode = 'bed' THEN b.persons ELSE 1 END)), 0) AS amount
-    FROM room_bookings b JOIN rooms r ON r.id = b.room_id WHERE b.status != 'cancelled'`).get();
+    FROM room_bookings b JOIN rooms r ON r.id = b.room_id WHERE b.status NOT IN ('cancelled', 'waitlist')`).get();
   res.json({
     onsite: {
       rooms: rooms.total || 0, taken: rooms.taken || 0, beds: rooms.beds || 0,
-      persons: roomBookings.persons, pending: roomBookings.pending, amount: roomBookings.amount,
+      persons: roomBookings.persons, pending: roomBookings.pending, waitlist: roomBookings.waitlist, amount: roomBookings.amount,
     },
     guests: { households: g.households || 0, yes: g.yes || 0, no: g.no || 0, pending: g.pending || 0, adults: g.adults, children: g.children, veggie: g.veggie },
     diets,
@@ -92,6 +93,7 @@ function guestFrom(b) {
     adults: int(b.adults ?? 1, 0, 50, 'Adultes'), children: int(b.children ?? 0, 0, 50, 'Enfants'),
     veggie: int(b.veggie ?? 0, 0, 100, 'Menus végétariens'),
     diet: str(b.diet, 500), message: str(b.message, 2000), notes: str(b.notes, 2000),
+    room_priority: b.room_priority ? 1 : 0,
   };
   if (d.veggie > d.adults + d.children) throw new HttpError(400, 'Plus de menus végétariens que de personnes.');
   return d;
@@ -103,8 +105,8 @@ router.get('/guests', (req, res) => {
 
 router.post('/guests', (req, res) => {
   const d = guestFrom(req.body || {});
-  const info = db.prepare(`INSERT INTO guests (name, name_key, email, phone, status, adults, children, veggie, diet, message, notes, source, responded_at)
-    VALUES (@name, @name_key, @email, @phone, @status, @adults, @children, @veggie, @diet, @message, @notes, 'admin',
+  const info = db.prepare(`INSERT INTO guests (name, name_key, email, phone, status, adults, children, veggie, diet, message, notes, room_priority, source, responded_at)
+    VALUES (@name, @name_key, @email, @phone, @status, @adults, @children, @veggie, @diet, @message, @notes, @room_priority, 'admin',
             CASE WHEN @status = 'pending' THEN NULL ELSE datetime('now') END)`).run(d);
   res.json({ id: info.lastInsertRowid });
 });
@@ -132,7 +134,7 @@ router.post('/guests/bulk', (req, res) => {
 router.put('/guests/:id', (req, res) => {
   const d = guestFrom(req.body || {});
   const info = db.prepare(`UPDATE guests SET name=@name, name_key=@name_key, email=@email, phone=@phone, status=@status,
-      adults=@adults, children=@children, veggie=@veggie, diet=@diet, message=@message, notes=@notes, updated_at=datetime('now'),
+      adults=@adults, children=@children, veggie=@veggie, diet=@diet, message=@message, notes=@notes, room_priority=@room_priority, updated_at=datetime('now'),
       responded_at = CASE WHEN @status = 'pending' THEN NULL ELSE COALESCE(responded_at, datetime('now')) END
       WHERE id=@id`).run({ ...d, id: int(req.params.id, 1, 1e9) });
   if (!info.changes) throw new HttpError(404, 'Invité introuvable.');
@@ -336,8 +338,15 @@ router.put('/content', (req, res) => {
       venue: str(b.onsite?.venue, 120),
       intro: str(b.onsite?.intro, 3000),
       note: str(b.onsite?.note, 1500),
+      nights: int(b.onsite?.nights ?? 2, 1, 7, 'Nombre de nuits'),
+      arrival: /^\d{4}-\d{2}-\d{2}$/.test(b.onsite?.arrival || '') ? b.onsite.arrival : '',
+      priority: !!b.onsite?.priority,
+      priority_until: /^\d{4}-\d{2}-\d{2}$/.test(b.onsite?.priority_until || '') ? b.onsite.priority_until : '',
     },
   };
+  if (next.onsite.priority && !next.onsite.priority_until) {
+    throw new HttpError(400, 'Indiquez jusqu’à quelle date les chambres sont réservées en priorité à la famille et aux témoins.');
+  }
   setContent(next);
   res.json({ ok: true });
 });

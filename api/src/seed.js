@@ -64,8 +64,12 @@ function defaultContent() {
       open: true,
       venue: 'Domaine de la réception (exemple)',
       intro:
-        'Le domaine où a lieu la réception compte 21 chambres. Choisissez la vôtre sur le plan, puis indiquez vos nuits : vendredi et samedi, ou samedi uniquement.',
+        'Le domaine où a lieu la réception compte 21 chambres. Choisissez la vôtre sur le plan et réservez-la pour tout le séjour.',
       note: 'Les modalités de règlement vous seront communiquées par mail rapidement.',
+      nights: 2, // nombre de nuits réservées (une seule formule)
+      arrival: '', // vide : la dernière nuit est celle du mariage
+      priority: false, // chambres réservées en priorité à la famille et aux témoins…
+      priority_until: '', // …jusqu'à cette date incluse (liste d'attente pour les autres)
     },
   };
 }

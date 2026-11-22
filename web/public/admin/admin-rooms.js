@@ -12,6 +12,7 @@
   const { $, $$ } = A;
 
   const STATUS = {
+    waitlist: { label: 'Liste d’attente', cls: 'pill-waitlist' },
     pending: { label: 'En attente', cls: 'pill-wait' },
     payment: { label: 'Règlement en cours', cls: 'pill-pay' },
     confirmed: { label: 'Confirmée', cls: 'pill-ok' },
@@ -21,6 +22,7 @@
   let statusFilter = 'all';
   let planFloor = 'rdc';
 
+  let stayInfo = { short: '2 nuits', label: '', dates: '' }; // formule unique, fournie par l'API
   const priceOf = (b) => b.amount ?? null; // calculé par l'API (prix du lit × lits pour un dortoir)
   const unitOf = (b) => (b.nights === 'sat' ? b.price_sat : b.price_both);
   const bedsLabel = (n) => `${n} lit${n > 1 ? 's' : ''}`;
@@ -40,15 +42,17 @@
      Vue principale
      ========================================================= */
   async function roomsView() {
-    const [{ rooms, nights }, bookings] = await Promise.all([A.call('/admin/rooms'), A.call('/admin/room-bookings')]);
-    const active = bookings.filter((b) => b.status !== 'cancelled');
+    const [{ rooms, nights, stay, priority }, bookings] = await Promise.all([A.call('/admin/rooms'), A.call('/admin/room-bookings')]);
+    stayInfo = stay;
+    const active = bookings.filter((b) => b.status !== 'cancelled' && b.status !== 'waitlist');
+    const waiting = bookings.filter((b) => b.status === 'waitlist').length;
     const offered = rooms.filter((r) => r.bookable);
     const taken = offered.filter((r) => r.full).length;
     const pending = bookings.filter((b) => b.status === 'pending').length;
     const paying = bookings.filter((b) => b.status === 'payment').length;
     const persons = active.reduce((s, b) => s + b.persons, 0);
     const amount = active.reduce((s, b) => s + (priceOf(b) || 0), 0);
-    const missingPrices = offered.filter((r) => r.price_both === null || r.price_sat === null).length;
+    const missingPrices = offered.filter((r) => r.price_both === null).length;
 
     A.view.innerHTML = `
       <div class="page-head row">
@@ -63,10 +67,15 @@
       <div class="stats">
         <div class="stat"><span class="stat-num">${taken}<small>/${offered.length}</small></span><span class="stat-label">chambres réservées</span></div>
         <div class="stat stat-ok"><span class="stat-num">${persons}</span><span class="stat-label">personnes logées</span></div>
-        <div class="stat stat-wait"><span class="stat-num">${pending}<small>${paying ? ` +${paying}` : ''}</small></span><span class="stat-label">à valider${paying ? ` · ${paying} règlement${paying > 1 ? 's' : ''} en cours` : ''}</span></div>
+        <div class="stat stat-wait"><span class="stat-num">${pending}<small>${paying ? ` +${paying}` : ''}</small></span><span class="stat-label">à valider${paying ? ` · ${paying} règlement${paying > 1 ? 's' : ''} en cours` : ''}${waiting ? ` · ${waiting} en liste d’attente` : ''}</span></div>
         <div class="stat"><span class="stat-num stat-money">${esc(euro(amount, '0 €'))}</span><span class="stat-label">montant attendu</span></div>
       </div>
-      ${missingPrices ? `<p class="notice">💶 ${A.plural(missingPrices, 'chambre n’a', 'chambres n’ont')} pas encore tous ses prix. Renseignez-les dans « Chambres &amp; prix ».</p>` : ''}
+      <p class="stay-banner">🌙 Formule unique : <strong>${esc(stay.short)}</strong>${stay.dates ? ` · ${esc(stay.dates)}` : ''}
+        <small>(réglable dans <a href="#content" data-goto-content>Contenu → Dormir sur place</a>)</small></p>
+      ${priority.enabled ? `<p class="notice ${priority.active ? '' : 'notice-ok'}">${priority.active
+        ? `⭐ <strong>Priorité famille &amp; témoins jusqu’au ${esc(priority.until_label)}</strong> : les autres invités sont inscrits en liste d’attente${waiting ? ` (${waiting} actuellement)` : ''}. Réservations ouvertes à tous à partir du ${esc(priority.open_label)}.`
+        : `✅ Période de priorité terminée (${esc(priority.until_label)}) : réservations ouvertes à tous.${waiting ? ` ${A.plural(waiting, 'demande reste', 'demandes restent')} en liste d’attente : acceptez-les selon les disponibilités.` : ''}`}</p>` : ''}
+      ${missingPrices ? `<p class="notice">💶 ${A.plural(missingPrices, 'chambre n’a', 'chambres n’ont')} pas encore de prix. Renseignez-les dans « Chambres &amp; prix ».</p>` : ''}
 
       <div class="segmented" role="tablist">
         <button role="tab" data-tab="bookings" aria-selected="${tab === 'bookings'}">Réservations <span>${bookings.length}</span></button>
@@ -76,6 +85,7 @@
       <div id="rooms-pane"></div>`;
 
     $$('.segmented [data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; roomsView(); }));
+    $('[data-goto-content]')?.addEventListener('click', (e) => { e.preventDefault(); document.querySelector('.tabs [data-view=content]')?.click(); });
     $('#add-room-booking').addEventListener('click', () => editBooking(null, rooms, nights));
 
     const pane = $('#rooms-pane');
@@ -86,11 +96,12 @@
 
   /* ---------- Réservations ---------- */
   function renderBookings(pane, bookings, rooms, nights) {
-    const counts = { all: bookings.length, pending: 0, payment: 0, confirmed: 0, cancelled: 0 };
+    const counts = { all: bookings.length, waitlist: 0, pending: 0, payment: 0, confirmed: 0, cancelled: 0 };
     bookings.forEach((b) => counts[b.status]++);
     pane.innerHTML = `
       <div class="chips" role="group" aria-label="Filtrer par statut">
-        ${[['all', 'Toutes'], ['pending', 'En attente'], ['payment', 'Règlement en cours'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']]
+        ${[['all', 'Toutes'], ['waitlist', 'Liste d’attente'], ['pending', 'En attente'], ['payment', 'Règlement en cours'], ['confirmed', 'Confirmées'], ['cancelled', 'Annulées']]
+          .filter(([k]) => k !== 'waitlist' || counts.waitlist || statusFilter === 'waitlist')
           .map(([k, l]) => `<button class="chip" data-st="${k}" aria-pressed="${statusFilter === k}">${l} <span>${counts[k]}</span></button>`).join('')}
       </div>
       <ul class="bookings room-bookings" id="rb-list"></ul>
@@ -103,16 +114,20 @@
           <div class="booking-main">
             <strong>${esc(b.room_name)}</strong> — ${esc(fullName(b))} · ${whoCount(b)}
             <span class="pill ${STATUS[b.status].cls}">${STATUS[b.status].label}</span>
+            ${b.priority ? '<span class="pill pill-prio" title="Nom reconnu parmi la famille et les témoins (liste des invités)">⭐ Famille / témoin</span>' : ''}
             <small>🌙 ${esc(nights[b.nights])} · ${esc(euro(priceOf(b), 'prix non défini'))}${b.price_mode === 'bed' && unitOf(b) !== null ? ` (${b.persons} × ${esc(euro(unitOf(b)))})` : ''}
               ${[b.email, b.phone].filter(Boolean).map((x) => ' · ' + esc(x)).join('')}</small>
             ${b.message ? `<small class="quote">« ${esc(b.message)} »</small>` : ''}
             ${b.notes ? `<small>📝 ${esc(b.notes)}</small>` : ''}
             ${b.mail_sent_at ? `<small>📧 Mail de règlement envoyé le ${A.fmtDateTime(b.mail_sent_at)}</small>` : ''}
+            ${b.status === 'waitlist' ? `<small>⏳ Demande reçue le ${A.fmtDateTime(b.created_at)} · chambre souhaitée, non bloquée${
+              rooms.find((r) => r.id === b.room_id)?.full ? ' · <b class="warn-text">chambre déjà prise : changez-la (✏️) avant d’accepter</b>' : ''}</small>` : ''}
           </div>
           <div class="booking-actions">
+            ${b.status === 'waitlist' ? `<button class="btn btn-small btn-primary" data-set="pending" data-id="${b.id}" title="Sort de la liste d’attente : la chambre est réservée (si elle est libre)">Accepter</button>` : ''}
             ${b.status === 'pending' ? `<button class="btn btn-small btn-pay" data-set="payment" data-id="${b.id}" title="Passe la réservation en « Règlement en cours » et envoie le mail à l’invité">Règlement en cours</button>` : ''}
             ${b.status === 'payment' ? `<button class="btn btn-small btn-ghost" data-mail="${b.id}" title="Renvoyer le mail de règlement">📧 Renvoyer</button>` : ''}
-            ${b.status !== 'confirmed' ? `<button class="btn btn-small btn-primary" data-set="confirmed" data-id="${b.id}">${b.status === 'payment' ? 'Payé · Valider' : 'Valider'}</button>` : ''}
+            ${b.status !== 'confirmed' && b.status !== 'waitlist' ? `<button class="btn btn-small btn-primary" data-set="confirmed" data-id="${b.id}">${b.status === 'payment' ? 'Payé · Valider' : 'Valider'}</button>` : ''}
             ${b.status !== 'cancelled' ? `<button class="btn btn-small btn-ghost" data-set="cancelled" data-id="${b.id}">Annuler</button>` : ''}
             <button class="btn btn-small btn-ghost" data-edit="${b.id}" aria-label="Modifier la réservation de ${esc(fullName(b))}">✏️</button>
           </div>
@@ -155,6 +170,7 @@
       const r = await A.call(`/admin/room-bookings/${id}`, { method: 'PUT', body: { status } });
       if (!mailToast(r)) {
         A.toast(status === 'confirmed' ? 'Réservation confirmée' : status === 'payment' ? 'Règlement en cours'
+          : status === 'pending' ? 'Demande acceptée : la chambre est réservée'
           : 'Réservation annulée : la chambre est de nouveau libre');
       }
       roomsView();
@@ -174,7 +190,6 @@
       { name: 'first_name', label: 'Prénom', required: true },
       { name: 'last_name', label: 'Nom', required: true },
       { name: 'persons', label: 'Personnes (lits pour un dortoir)', type: 'number', min: 1, max: 20, default: 2 },
-      { name: 'nights', label: 'Nuits', type: 'select', options: [{ value: 'both', label: nights.both }, { value: 'sat', label: nights.sat }] },
       { name: 'email', label: 'E-mail', type: 'email' },
       { name: 'phone', label: 'Téléphone', type: 'tel' },
       { name: 'status', label: 'Statut', type: 'select', options: Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'confirmed' },
@@ -382,12 +397,11 @@
                 <option value="room" ${r.per_bed ? '' : 'selected'}>par chambre</option>
                 <option value="bed" ${r.per_bed ? 'selected' : ''}>par lit</option>
               </select></label>
-            <label>2 nuits<span class="euro"><input inputmode="decimal" data-price="price_both" data-id="${r.id}" value="${esc(priceInput(r.price_both))}" placeholder="—" aria-label="Prix 2 nuits ${esc(r.name)}"></span></label>
-            <label>Samedi<span class="euro"><input inputmode="decimal" data-price="price_sat" data-id="${r.id}" value="${esc(priceInput(r.price_sat))}" placeholder="—" aria-label="Prix samedi seul ${esc(r.name)}"></span></label>
+            <label>Séjour ${esc(stayInfo.short)}<span class="euro"><input inputmode="decimal" data-price="price_both" data-id="${r.id}" value="${esc(priceInput(r.price_both))}" placeholder="—" aria-label="Prix du séjour ${esc(r.name)}"></span></label>
           </div>
         </div>`).join('')}</div>`;
     pane.innerHTML = `
-      <p class="muted small">Prix en euros, pour la chambre entière ou <b>par lit</b> (dortoirs : chaque invité réserve le nombre de lits voulu).
+      <p class="muted small">Prix en euros <b>pour tout le séjour (${esc(stayInfo.short)})</b>, pour la chambre entière ou <b>par lit</b> (dortoirs : chaque invité réserve le nombre de lits voulu).
         Ils s'enregistrent automatiquement quand vous quittez le champ. Touchez une chambre pour modifier sa fiche et ses photos.</p>
       ${block('rdc', 'Rez-de-chaussée')}${block('etage', 'Étage')}
       <div class="panel rooms-total" id="rooms-total" aria-live="polite"></div>`;
@@ -405,7 +419,7 @@
         <h2>Total si tout est loué</h2>
         <p class="muted small">${A.plural(offered.length, 'chambre proposée', 'chambres proposées')}, ${beds} couchages.
           Les dortoirs comptent pour le prix du lit × leur nombre de lits.</p>
-        <div class="rt-grid">${line('price_both', '2 nuits', 'vendredi + samedi')}${line('price_sat', '1 nuit', 'samedi seul')}</div>`;
+        <div class="rt-grid">${line('price_both', `Séjour ${stayInfo.short}`, stayInfo.label)}</div>`;
     };
     drawTotal();
     $$('[data-mode]', pane).forEach((sel) => sel.addEventListener('change', async () => {
@@ -488,8 +502,7 @@
       { value: 'room', label: 'Prix de la chambre entière (une seule réservation)' },
       { value: 'bed', label: 'Prix par lit — dortoir (les invités réservent des lits)' },
     ] },
-    { name: 'price_both', label: 'Prix 2 nuits (€)', placeholder: 'ex. 120' },
-    { name: 'price_sat', label: 'Prix samedi seul (€)', placeholder: 'ex. 70' },
+    { name: 'price_both', label: 'Prix du séjour (€)', placeholder: 'ex. 80' },
     { name: 'beds', label: 'Couchage', full: true },
     { name: 'bath', label: 'Sanitaires', full: true },
     { name: 'description', label: 'Description', type: 'textarea', full: true },
@@ -504,7 +517,7 @@
       const { rooms } = await A.call('/admin/rooms');
       r = rooms.find((x) => x.id === stale.id) || stale;
     } catch { /* on garde la version affichée */ }
-    const values = { ...r, price_both: priceInput(r.price_both), price_sat: priceInput(r.price_sat), price_mode: r.per_bed ? 'bed' : 'room' };
+    const values = { ...r, price_both: priceInput(r.price_both), price_mode: r.per_bed ? 'bed' : 'room' };
     A.openModal({
       title: r.name,
       html: `

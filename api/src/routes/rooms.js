@@ -13,20 +13,21 @@ const { db, MEDIA_DIR, getContent, getPrivate, roomsWithStatus, bookingAmount } 
 const { HttpError, str, int, oneOf, email, rateLimit, toCsv, imageType } = require('../util');
 const { verifyCaptcha } = require('../captcha');
 const mailer = require('../mailer');
+const { stayInfo, priorityInfo, findPriorityGuest } = require('../stay');
 
 const NIGHTS = ['both', 'sat'];
 
-/** Libellés des deux formules, calculés à partir de la date du mariage (le samedi). */
+/** Libellés des nuits : « both » = le séjour proposé (nombre de nuits réglé dans l'admin) ;
+ *  « sat » ne sert plus qu'aux anciennes réservations « samedi seul ». */
 function nightLabels(content) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(content.date || '');
-  if (!m) return { both: 'Vendredi et samedi', sat: 'Samedi uniquement' };
-  const sat = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-  const fri = new Date(sat.getTime() - 86400_000);
-  const fmt = (d, opts) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', ...opts }).format(d);
-  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  const friStr = fmt(fri, { weekday: 'long', day: 'numeric' }); // « vendredi 18 »
-  const satStr = fmt(sat, { weekday: 'long', day: 'numeric', month: 'long' }); // « samedi 19 août »
-  return { both: `${cap(friStr)} et ${satStr}`, sat: `${cap(satStr)} uniquement` };
+  let sat = 'Samedi uniquement';
+  if (m) {
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    const str2 = new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(d);
+    sat = `${str2.charAt(0).toUpperCase() + str2.slice(1)} uniquement`;
+  }
+  return { both: stayInfo(content).label, sat };
 }
 
 /** Prix : nombre ≥ 0 ou null si vide. */
@@ -48,12 +49,14 @@ publicRouter.get('/rooms', (req, res) => {
   res.json({
     onsite: content.onsite,
     nights: nightLabels(content),
+    stay: stayInfo(content),
+    priority: priorityInfo(content),
     code_required: !!(getPrivate('invite_code') || '').trim(),
     // Aucune donnée personnelle : seulement « disponible » ou non
     rooms: roomsWithStatus().map((r) => ({
       id: r.id, code: r.code, name: r.name, short_name: r.short_name, floor: r.floor, area: r.area,
       capacity: r.capacity, beds: r.beds, bath: r.bath, private_bath: r.private_bath, baby_bed: r.baby_bed,
-      description: r.description, price_both: r.price_both, price_sat: r.price_sat,
+      description: r.description, price_both: r.price_both,
       per_bed: r.per_bed, beds_free: r.bookable ? r.beds_free : 0,
       available: r.bookable && !r.full, bookable: r.bookable,
       x: r.x, y: r.y, w: r.w, h: r.h, bed_icon: r.bed_icon, photos: r.photos,
@@ -66,19 +69,22 @@ const bookRoomTx = db.transaction((d) => {
   const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(d.room_id);
   if (!room) throw new HttpError(404, 'Chambre introuvable.');
   if (!room.bookable) throw new HttpError(400, 'Cette chambre n’est pas proposée à la réservation.');
-  if (room.price_mode === 'bed') {
+  if (d.status === 'waitlist') {
+    // Liste d'attente : la chambre souhaitée est notée, sans être bloquée
+    if (d.persons > room.capacity) throw new HttpError(400, `« ${room.name} » accueille ${room.capacity} ${room.price_mode === 'bed' ? 'lit(s)' : 'personne(s)'} au maximum.`);
+  } else if (room.price_mode === 'bed') {
     // Dortoir loué au lit : plusieurs réservations tant qu'il reste des lits
-    const used = db.prepare("SELECT COALESCE(SUM(persons), 0) AS n FROM room_bookings WHERE room_id = ? AND status != 'cancelled'").get(d.room_id).n;
+    const used = db.prepare("SELECT COALESCE(SUM(persons), 0) AS n FROM room_bookings WHERE room_id = ? AND status NOT IN ('cancelled', 'waitlist')").get(d.room_id).n;
     const free = Math.max(0, room.capacity - used);
     if (!free) throw new HttpError(409, `Désolé, il n’y a plus de lit libre dans « ${room.name} ». Choisissez une autre chambre.`);
     if (d.persons > free) throw new HttpError(409, `Il ne reste que ${free} lit${free > 1 ? 's' : ''} libre${free > 1 ? 's' : ''} dans « ${room.name} ».`);
   } else {
-    const taken = db.prepare("SELECT 1 FROM room_bookings WHERE room_id = ? AND status != 'cancelled'").get(d.room_id);
+    const taken = db.prepare("SELECT 1 FROM room_bookings WHERE room_id = ? AND status NOT IN ('cancelled', 'waitlist')").get(d.room_id);
     if (taken) throw new HttpError(409, `Désolé, « ${room.name} » vient d’être réservée. Choisissez une autre chambre.`);
     if (d.persons > room.capacity) throw new HttpError(400, `« ${room.name} » accueille ${room.capacity} personne(s) au maximum.`);
   }
-  db.prepare(`INSERT INTO room_bookings (room_id, first_name, last_name, email, phone, persons, nights, message)
-              VALUES (@room_id, @first_name, @last_name, @email, @phone, @persons, @nights, @message)`).run(d);
+  db.prepare(`INSERT INTO room_bookings (room_id, first_name, last_name, email, phone, persons, nights, message, status, priority)
+              VALUES (@room_id, @first_name, @last_name, @email, @phone, @persons, @nights, @message, @status, @priority)`).run(d);
   return room;
 });
 
@@ -99,18 +105,29 @@ publicRouter.post('/room-bookings', rateLimit('room', 10, 10 * 60_000), (req, re
     email: email(b.email),
     phone: str(b.phone, 40),
     persons: int(b.persons, 1, 20, 'Nombre de personnes'),
-    nights: NIGHTS.includes(b.nights) ? b.nights : null,
+    nights: 'both', // une seule formule : tout le séjour
     message: str(b.message, 2000),
   };
   if (!d.first_name || !d.last_name) throw new HttpError(400, 'Merci d’indiquer votre prénom et votre nom.');
   if (!d.email) throw new HttpError(400, 'Merci d’indiquer votre adresse e-mail : les modalités de règlement vous y seront envoyées.');
-  if (!d.nights) throw new HttpError(400, 'Merci de choisir vos nuits.');
+  // Période de priorité : famille et témoins (cochés dans la liste des invités) réservent ; les autres vont en liste d'attente
+  const prio = priorityInfo(content);
+  const isPriority = !!findPriorityGuest(d.first_name, d.last_name);
+  d.priority = isPriority ? 1 : 0;
+  d.status = prio.active && !isPriority ? 'waitlist' : 'pending';
   const room = bookRoomTx(d);
-  const labels = nightLabels(content);
+  const stay = stayInfo(content);
   const what = room.price_mode === 'bed' ? `${d.persons} lit${d.persons > 1 ? 's' : ''} dans « ${room.name} »` : `« ${room.name} »`;
+  if (d.status === 'waitlist') {
+    return res.json({
+      ok: true, waitlist: true,
+      message: `Merci ${d.first_name} ! Les chambres sont réservées en priorité à la famille et aux témoins jusqu’au ${prio.until_label}. `
+        + `Votre demande pour ${what} (${stay.short}) est inscrite sur liste d’attente : nous revenons vers vous par mail après cette date, selon les disponibilités.`,
+    });
+  }
   res.json({
     ok: true,
-    message: `Merci ${d.first_name} ! Votre demande pour ${what} (${labels[d.nights].toLowerCase()}) est enregistrée.`,
+    message: `Merci ${d.first_name} ! Votre demande pour ${what} (${stay.label.toLowerCase()}) est enregistrée.`,
   });
 });
 
@@ -130,7 +147,8 @@ publicRouter.get('/media/rooms/:file', (req, res) => {
 const adminRouter = express.Router();
 
 adminRouter.get('/rooms', (req, res) => {
-  res.json({ rooms: roomsWithStatus(), nights: nightLabels(getContent()) });
+  const c = getContent();
+  res.json({ rooms: roomsWithStatus(), nights: nightLabels(c), stay: stayInfo(c), priority: priorityInfo(c) });
 });
 
 /** Mise à jour partielle : on peut n'envoyer que les prix. */
@@ -157,7 +175,7 @@ adminRouter.put('/rooms/:id', (req, res) => {
     bookable: has('bookable') ? (b.bookable ? 1 : 0) : cur.bookable,
   };
   if (next.price_mode === 'room' && cur.price_mode === 'bed') {
-    const n = db.prepare("SELECT COUNT(*) AS n FROM room_bookings WHERE room_id = ? AND status != 'cancelled'").get(id).n;
+    const n = db.prepare("SELECT COUNT(*) AS n FROM room_bookings WHERE room_id = ? AND status NOT IN ('cancelled', 'waitlist')").get(id).n;
     if (n > 1) throw new HttpError(409, `« ${cur.name} » a ${n} réservations au lit : n’en gardez qu’une avant de la louer en entier.`);
   }
   db.prepare(`UPDATE rooms SET name=@name, short_name=@short_name, area=@area, capacity=@capacity, beds=@beds, bath=@bath,
@@ -213,7 +231,7 @@ adminRouter.put('/photos/:id/move', (req, res) => {
 });
 
 /* ---------- Réservations ---------- */
-const STATUSES = ['pending', 'payment', 'confirmed', 'cancelled'];
+const STATUSES = ['waitlist', 'pending', 'payment', 'confirmed', 'cancelled'];
 const bookingRow = (id) => {
   const b = db.prepare(`SELECT b.*, r.name AS room_name, r.floor, r.price_both, r.price_sat, r.price_mode FROM room_bookings b
                         JOIN rooms r ON r.id = b.room_id WHERE b.id = ?`).get(id);
@@ -254,18 +272,18 @@ function bookingFrom(b, cur = {}) {
 
 /** Une chambre entière : une seule réservation active. Un dortoir loué au lit : autant que de lits. */
 function checkRoomFree(d, excludeId = 0) {
-  if (d.status === 'cancelled') return;
+  if (d.status === 'cancelled' || d.status === 'waitlist') return; // n'occupe pas la chambre
   const room = db.prepare('SELECT name, capacity, price_mode FROM rooms WHERE id = ?').get(d.room_id);
   if (!room) throw new HttpError(404, 'Chambre introuvable.');
   if (room.price_mode === 'bed') {
     const used = db.prepare(`SELECT COALESCE(SUM(persons), 0) AS n FROM room_bookings
-                             WHERE room_id = ? AND status != 'cancelled' AND id != ?`).get(d.room_id, excludeId).n;
+                             WHERE room_id = ? AND status NOT IN ('cancelled', 'waitlist') AND id != ?`).get(d.room_id, excludeId).n;
     const free = Math.max(0, room.capacity - used);
     if (d.persons > free) throw new HttpError(409, `« ${room.name} » : ${free} lit${free > 1 ? 's' : ''} libre${free > 1 ? 's' : ''} seulement (${room.capacity} au total).`);
     return;
   }
   const other = db.prepare(`SELECT first_name, last_name FROM room_bookings
-                            WHERE room_id = ? AND status != 'cancelled' AND id != ?`).get(d.room_id, excludeId);
+                            WHERE room_id = ? AND status NOT IN ('cancelled', 'waitlist') AND id != ?`).get(d.room_id, excludeId);
   if (other) {
     throw new HttpError(409, `« ${room.name} » est déjà réservée par ${other.first_name} ${other.last_name}. Annulez d’abord cette réservation.`);
   }
@@ -345,7 +363,7 @@ adminRouter.delete('/room-bookings/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-const STATUS = { pending: 'En attente', payment: 'Règlement en cours', confirmed: 'Confirmée', cancelled: 'Annulée' };
+const STATUS = { waitlist: 'Liste d’attente', pending: 'En attente', payment: 'Règlement en cours', confirmed: 'Confirmée', cancelled: 'Annulée' };
 adminRouter.get('/room-bookings.csv', (req, res) => {
   const labels = nightLabels(getContent());
   const rows = db.prepare(`SELECT b.*, r.name AS room_name, r.floor, r.price_both, r.price_sat, r.price_mode FROM room_bookings b
@@ -353,7 +371,7 @@ adminRouter.get('/room-bookings.csv', (req, res) => {
   const csv = toCsv(rows, [
     { label: 'Chambre', key: 'room_name' }, { label: 'Étage', value: (r) => (r.floor === 'rdc' ? 'RDC' : 'Étage') },
     { label: 'Prénom', key: 'first_name' }, { label: 'Nom', key: 'last_name' }, { label: 'Personnes', key: 'persons' },
-    { label: 'Nuits', value: (r) => labels[r.nights] }, { label: 'Statut', value: (r) => STATUS[r.status] },
+    { label: 'Nuits', value: (r) => labels[r.nights] }, { label: 'Statut', value: (r) => STATUS[r.status] }, { label: 'Prioritaire', value: (r) => (r.priority ? 'oui' : '') },
     { label: 'Lits / personnes', value: (r) => (r.price_mode === 'bed' ? `${r.persons} lit(s)` : `${r.persons} pers.`) },
     { label: 'Prix (€)', value: (r) => { const p = bookingAmount(r); return p === null ? '' : String(p).replace('.', ','); } },
     { label: 'E-mail', key: 'email' }, { label: 'Téléphone', key: 'phone' }, { label: 'Message', key: 'message' },

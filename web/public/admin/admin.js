@@ -326,6 +326,8 @@
     { name: 'diet', label: 'Allergies et intolérances', full: true },
     { name: 'message', label: 'Message laissé', type: 'textarea', full: true },
     { name: 'notes', label: 'Notes internes (non visibles par l’invité)', type: 'textarea', full: true },
+    { name: 'room_priority', label: '⭐ Famille / témoin : prioritaire pour les chambres sur place', type: 'checkbox', full: true,
+      help: 'Le nom saisi lors de la réservation doit correspondre (ex. « Marie Durand » pour « Marie et Paul Durand »).' },
   ];
 
   function editGuest(g) {
@@ -390,7 +392,7 @@
         <button class="row-card" data-id="${g.id}">
           <span class="row-main"><strong>${esc(g.name)}</strong>
             <small>${g.status === 'yes' ? `${plural(g.adults, 'adulte', 'adultes')}${g.children ? ', ' + plural(g.children, 'enfant', 'enfants') : ''}` : ''}
-            ${g.status === 'yes' && g.veggie ? ` · 🥗 ${g.veggie} végé` : ''}${g.diet ? ` · ⚠️ ${esc(g.diet)}` : ''}${g.email ? ` · ${esc(g.email)}` : ''}${g.phone ? ` · ${esc(g.phone)}` : ''}</small>
+            ${g.room_priority ? ' · ⭐ prioritaire chambres' : ''}${g.status === 'yes' && g.veggie ? ` · 🥗 ${g.veggie} végé` : ''}${g.diet ? ` · ⚠️ ${esc(g.diet)}` : ''}${g.email ? ` · ${esc(g.email)}` : ''}${g.phone ? ` · ${esc(g.phone)}` : ''}</small>
             ${g.message ? `<small class="quote">« ${esc(g.message)} »</small>` : ''}</span>
           <span class="pill ${GUEST_STATUS[g.status].cls}">${GUEST_STATUS[g.status].label}</span>
         </button>`).join('') : '<p class="empty">Aucun invité ne correspond.</p>';
@@ -644,6 +646,16 @@
           <label class="field">Nom du lieu<input name="onsite_venue" value="${esc(c.onsite.venue)}"></label>
           <label class="field">Texte d’introduction<textarea name="onsite_intro" rows="3">${esc(c.onsite.intro)}</textarea></label>
           <label class="field">Note (règlement, arrivée…)<textarea name="onsite_note" rows="2">${esc(c.onsite.note)}</textarea></label>
+          <div class="grid-2">
+            <label class="field">Nombre de nuits réservées<input name="onsite_nights" type="number" min="1" max="7" value="${esc(c.onsite.nights ?? 2)}">
+              <small class="muted">Une seule formule : chaque réservation couvre toutes ces nuits.</small></label>
+            <label class="field">Date d’arrivée <small class="muted">(facultatif)</small><input name="onsite_arrival" type="date" value="${esc(c.onsite.arrival || '')}">
+              <small class="muted">Vide : la dernière nuit est celle du mariage.</small></label>
+          </div>
+          <label class="switch"><input type="checkbox" name="onsite_priority" ${c.onsite.priority ? 'checked' : ''}><span class="switch-ui" aria-hidden="true"></span>
+            <span>Chambres réservées en priorité à la famille et aux témoins (liste d’attente pour les autres)</span></label>
+          <label class="field">… jusqu’au (inclus)<input name="onsite_priority_until" type="date" value="${esc(c.onsite.priority_until || '')}">
+            <small class="muted">Cochez « ⭐ prioritaire » sur les invités concernés (onglet Invités). Le lendemain, tout le monde peut réserver.</small></label>
           <p class="muted small">Les chambres, leurs prix et leurs photos se gèrent dans l’onglet <a href="#rooms" data-goto-rooms>Chambres</a>.</p>
         </section>
 
@@ -785,7 +797,11 @@
         timezone: v('timezone'), welcome: v('welcome'), contact_email: v('contact_email'), contact_phone: v('contact_phone'),
         nights: c.nights || [],
         options: { rsvp_open: form.elements.rsvp_open.checked, rsvp_guest_list_only: form.elements.rsvp_guest_list_only.checked, games: form.elements.games_menu.checked },
-        onsite: { open: form.elements.onsite_open.checked, venue: v('onsite_venue'), intro: v('onsite_intro'), note: v('onsite_note') },
+        onsite: {
+          open: form.elements.onsite_open.checked, venue: v('onsite_venue'), intro: v('onsite_intro'), note: v('onsite_note'),
+          nights: v('onsite_nights'), arrival: v('onsite_arrival'),
+          priority: form.elements.onsite_priority.checked, priority_until: v('onsite_priority_until'),
+        },
         theme: {
           title: v('theme_title'), description: v('theme_description'), dress_code: v('theme_dress_code'),
           colors: $$('.color-row .hex', form).map((i) => i.value.trim()).filter((x) => /^#[0-9a-f]{6}$/i.test(x)),

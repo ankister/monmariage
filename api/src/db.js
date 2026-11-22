@@ -178,6 +178,25 @@ const rbCols = db.prepare('PRAGMA table_info(room_bookings)').all().map((c) => c
 if (!rbCols.includes('mail_sent_at')) {
   db.exec('ALTER TABLE room_bookings ADD COLUMN mail_sent_at TEXT'); // dernier mail « règlement » envoyé
 }
+if (!rbCols.includes('priority')) {
+  db.exec('ALTER TABLE room_bookings ADD COLUMN priority INTEGER NOT NULL DEFAULT 0'); // réservé par un invité prioritaire
+}
+const guestCols2 = db.prepare('PRAGMA table_info(guests)').all().map((c) => c.name);
+if (!guestCols2.includes('room_priority')) {
+  db.exec('ALTER TABLE guests ADD COLUMN room_priority INTEGER NOT NULL DEFAULT 0'); // famille / témoin : prioritaire pour les chambres
+}
+// Ancien texte d'introduction par défaut (vendredi et samedi, ou samedi seul) : une seule formule désormais
+{
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'content'").get();
+  const OLD = 'Le domaine où a lieu la réception compte 21 chambres. Choisissez la vôtre sur le plan, puis indiquez vos nuits : vendredi et samedi, ou samedi uniquement.';
+  if (row && row.value.includes('samedi uniquement')) {
+    const saved = JSON.parse(row.value);
+    if (saved.onsite?.intro === OLD) {
+      saved.onsite.intro = 'Le domaine où a lieu la réception compte 21 chambres. Choisissez la vôtre sur le plan et réservez-la pour tout le séjour.';
+      db.prepare("UPDATE settings SET value = ? WHERE key = 'content'").run(JSON.stringify(saved));
+    }
+  }
+}
 
 // Ancien texte par défaut sous le formulaire des chambres : remplacé par la nouvelle formulation
 {
@@ -275,7 +294,7 @@ function gitesWithAvailability() {
 function roomsWithStatus() {
   const rooms = db.prepare('SELECT * FROM rooms ORDER BY sort, id').all();
   const photos = db.prepare('SELECT id, room_id, filename FROM room_photos ORDER BY sort, id').all();
-  const active = db.prepare("SELECT * FROM room_bookings WHERE status != 'cancelled' ORDER BY id").all();
+  const active = db.prepare("SELECT * FROM room_bookings WHERE status NOT IN ('cancelled', 'waitlist') ORDER BY id").all();
   return rooms.map((r) => ({
     ...r,
     private_bath: !!r.private_bath,

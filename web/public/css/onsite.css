@@ -112,7 +112,7 @@
 .rd-success p:first-of-type { font-weight: 700; font-size: 1.05rem; }
 
 @media (min-width: 640px) {
-  .nights-info { grid-template-columns: 1fr 1fr; }
+  .nights-info { grid-template-columns: 1fr; }
   .plan-controls { flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; }
   .floor-tabs { min-width: 360px; }
   .room-grid { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
@@ -124,3 +124,11 @@
   .rc-photo { width: 130px; }
 }
 .rd-total { font-weight: 700; color: var(--accent); margin: -.25rem 0 1rem; font-size: 1.05rem; }
+/* Formule unique et priorité famille / témoins */
+.night-card small { display: block; }
+.stay-card strong { font-size: 1.1rem; }
+.prio-card { background: #fdf6e3; border-color: #ecd9a4; }
+.rd-stay { background: var(--bg-soft); border-radius: 10px; padding: .7rem .9rem; margin: 0 0 1rem; }
+.rd-prio { background: #fdf6e3; border: 1px solid #ecd9a4; border-radius: 10px; padding: .7rem .9rem; margin: 0 0 1rem; font-size: .95rem; }
+.rd-success.is-waitlist > span { background: #fdf1d4; color: #8a6510; }
+.price-table th small { color: var(--muted); font-weight: 400; }

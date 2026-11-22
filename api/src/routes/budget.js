@@ -94,7 +94,7 @@ function roomBookings() {
   return db.prepare(`SELECT b.id, b.first_name, b.last_name, b.persons, b.nights, b.status,
                             r.name AS room_name, r.floor, r.price_both, r.price_sat, r.price_mode
                      FROM room_bookings b JOIN rooms r ON r.id = b.room_id
-                     WHERE b.status != 'cancelled' ORDER BY r.floor DESC, r.id`).all()
+                     WHERE b.status NOT IN ('cancelled', 'waitlist') ORDER BY r.floor DESC, r.id`).all()
     .map((b) => ({ ...b, price: bookingAmount(b) }));
 }
 
