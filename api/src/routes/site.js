@@ -60,6 +60,14 @@ publicRouter.get('/stats/script.js', async (req, res) => {
   res.send(scriptCache.body);
 });
 
+/** Journal des erreurs du relais, au plus une fois par heure et par message (diagnostic dans les logs du conteneur). */
+const warned = new Map();
+function warnOnce(msg) {
+  if (Date.now() - (warned.get(msg) || 0) < 3600_000) return;
+  warned.set(msg, Date.now());
+  console.warn(msg);
+}
+
 /** Relais des statistiques vers Umami (le script les envoie à <data-host-url>/api/send). */
 publicRouter.post('/stats/api/send', rateLimit('stats', 300, 10 * 60_000), async (req, res) => {
   const u = getUmami();
@@ -80,8 +88,11 @@ publicRouter.post('/stats/api/send', rateLimit('stats', 300, 10 * 60_000), async
       },
       body: JSON.stringify(req.body || {}),
     });
-    res.status(r.status).type('application/json').send(await r.text());
-  } catch {
+    const body = await r.text();
+    if (!r.ok) warnOnce(`[stats] Umami a refusé une visite (${r.status}) : ${body.slice(0, 200)}`);
+    res.status(r.status).type('application/json').send(body);
+  } catch (err) {
+    warnOnce(`[stats] Umami injoignable depuis le serveur du site : ${err.message}`);
     res.status(204).end(); // une panne de Umami ne doit jamais gêner les invités
   }
 });

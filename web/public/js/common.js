@@ -96,6 +96,7 @@ window.MM = (() => {
       s.src = '/api/stats/script.js';
       s.dataset.websiteId = cfg.website_id;
       s.dataset.hostUrl = '/api/stats'; // le script enverra à /api/stats/api/send
+      s.dataset.fetchCredentials = 'same-origin'; // versions récentes de Umami : envoie le cookie du site
       document.head.append(s);
     } catch { /* les statistiques ne doivent jamais gêner l'affichage */ }
   }

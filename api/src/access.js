@@ -74,8 +74,11 @@ function canView(req) {
   return !getAccess().enabled || hasValidSession(req);
 }
 
-/** Routes de l'API toujours accessibles (page de connexion, apparence, santé). */
-const OPEN = [/^\/access\//, /^\/health$/, /^\/favicon$/, /^\/apparence$/, /^\/fonts\.css$/];
+/** Routes de l'API toujours accessibles (page de connexion, apparence, santé, statistiques).
+ *  Statistiques : le script Umami envoie ses mesures sans cookie (credentials « omit » par défaut) ;
+ *  sans cette exception, chaque visite était refusée (401) quand le site est réservé aux invités. */
+const OPEN = [/^\/access\//, /^\/health$/, /^\/favicon$/, /^\/apparence$/, /^\/fonts\.css$/,
+  /^\/stats\/(config|script\.js|api\/send)$/];
 
 /** Middleware : refuse les routes publiques de l'API sans session quand l'accès est restreint. */
 function guard(req, res, next) {
