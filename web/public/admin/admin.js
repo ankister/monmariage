@@ -962,7 +962,7 @@
      Vue : Sécurité
      ========================================================= */
   async function security() {
-    const [s, acc] = await Promise.all([call('/admin/security'), call('/admin/access')]);
+    const [s, acc, sh] = await Promise.all([call('/admin/security'), call('/admin/access'), call('/admin/sheets')]);
     view.innerHTML = `
       <div class="page-head"><h1>Sécurité</h1></div>
       <div class="panel-grid">
@@ -1001,7 +1001,59 @@
           <button class="btn btn-primary" type="submit">Changer le mot de passe</button>
           <p class="form-error" role="alert"></p>
         </form>
+
+        <section class="panel sheets-panel" id="sheets-panel" aria-labelledby="sheets-title"></section>
       </div>`;
+
+    /* Google Sheets : deux liens secrets, en lecture seule */
+    const sp = $('#sheets-panel');
+    const drawSheets = (c) => {
+      const base = location.origin;
+      const link = (f) => `${base}/api/export/${f}?cle=${encodeURIComponent(c.token)}`;
+      const line = (label, f) => `<label class="field">${label}
+          <span class="copy-line"><input readonly value="${esc(`=IMPORTDATA("${link(f)}")`)}" aria-label="Formule ${esc(label)}">
+          <button type="button" class="btn btn-ghost btn-small" data-copy-formula>Copier</button></span></label>`;
+      sp.innerHTML = `
+        <h2 id="sheets-title">📊 Google Sheets (lecture seule)</h2>
+        <p class="muted small">Le site reste la référence : un Google Sheet affiche automatiquement la liste des invités et les réservations
+          des chambres. Ce que vous modifiez dans le tableur ne revient pas sur le site.</p>
+        <label class="switch"><input type="checkbox" data-sheets-enabled ${c.enabled ? 'checked' : ''}><span class="switch-ui" aria-hidden="true"></span>
+          <span>Activer les liens pour Google Sheets</span></label>
+        ${c.enabled && c.token ? `
+          ${location.protocol !== 'https:' ? '<p class="notice">⚠️ Vous êtes connectés en http (adresse locale). Ouvrez l’administration avec l’adresse publique du site en https pour copier des formules que Google pourra lire.</p>' : ''}
+          <ol class="sheets-steps small">
+            <li>Créez un Google Sheet avec deux onglets, par exemple « Invités » et « Chambres ».</li>
+            <li>Dans la case <b>A1</b> de chaque onglet, collez la formule correspondante.</li>
+            <li>Google actualise le tableau tout seul (pas en temps réel). Ajoutez vos calculs dans d’autres colonnes ou onglets.</li>
+          </ol>
+          ${line('Invités', 'invites.csv')}
+          ${line('Réservations des chambres', 'chambres.csv')}
+          <p class="muted small">⚠️ Ces liens donnent accès aux e-mails et téléphones des invités à toute personne qui les connaît :
+            ne les partagez pas. Si un lien a circulé, changez la clé (les formules actuelles cesseront de fonctionner).</p>
+          <button type="button" class="btn btn-ghost btn-small" data-sheets-key>🔑 Changer la clé</button>` : ''}`;
+    };
+    drawSheets(sh);
+    sp.addEventListener('change', async (e) => {
+      if (!e.target.matches('[data-sheets-enabled]')) return;
+      try {
+        const c = await call('/admin/sheets', { method: 'PUT', body: { enabled: e.target.checked } });
+        drawSheets(c);
+        toast(c.enabled ? 'Liens Google Sheets activés' : 'Liens Google Sheets coupés : les tableaux ne se mettent plus à jour');
+      } catch (err) { toast(err.message, 'error'); e.target.checked = !e.target.checked; }
+    });
+    sp.addEventListener('click', async (e) => {
+      const copy = e.target.closest('[data-copy-formula]');
+      if (copy) {
+        const inp = copy.closest('.copy-line').querySelector('input');
+        try { await navigator.clipboard.writeText(inp.value); toast('Formule copiée'); } catch { inp.select(); }
+        return;
+      }
+      if (e.target.closest('[data-sheets-key]')) {
+        if (!(await confirmBox('Changer la clé ?', 'Les formules déjà collées dans Google Sheets cesseront de fonctionner : il faudra coller les nouvelles.'))) return;
+        try { drawSheets(await call('/admin/sheets/new-key', { method: 'POST', body: {} })); toast('Nouvelle clé : collez les nouvelles formules'); }
+        catch (err) { toast(err.message, 'error'); }
+      }
+    });
 
     const af = $('#access-form');
     const showStatus = (enabled) => {

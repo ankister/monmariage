@@ -346,6 +346,7 @@ location /api/admin/ {
 |---|---|
 | Fixer le prix des chambres sur place | **Chambres → Chambres & prix** (prix du séjour, une seule formule dont le nombre de nuits se règle dans **Contenu → Dormir sur place**, **par chambre ou par lit** pour les dortoirs, total en bas de la liste, enregistrement automatique) |
 | Réserver les chambres en priorité à la famille et aux témoins | Cochez **⭐ prioritaire** sur les invités concernés, puis activez la priorité avec sa date de fin dans **Contenu → Dormir sur place** : les autres demandes passent en liste d'attente (**Chambres → Liste d'attente → Accepter**) |
+| Suivre invités et réservations dans Google Sheets | **Sécurité → Google Sheets** : activez les liens, puis collez chaque formule `=IMPORTDATA("…")` en A1 d'un onglet (lecture seule, clé secrète changeable) |
 | Indiquer où se garer (dont places PMR) | **Lieux → 🅿️ Stationnement** : parkings et places PMR placés sur la carte ; page « Où se garer ? » liée sous l'itinéraire de la mairie (case dans la fiche du lieu) |
 | Envoyer les modalités de règlement par e-mail | **Chambres → Réservations → Règlement en cours** : mail automatique à l'invité ; serveur SMTP et modèle HTML dans le bloc **Mail** (sous les réservations), sans variable de conteneur |
 | Ajouter des photos d'une chambre | **Chambres → Chambres & prix → toucher la chambre → + Ajouter des photos** |

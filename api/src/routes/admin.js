@@ -380,5 +380,6 @@ router.use(require('./budget'));
 router.use(require('./music').adminRouter);
 router.use(require('./album').adminRouter);
 router.use(require('./parking').adminRouter);
+router.use(require('./sheets').adminRouter);
 
 module.exports = router;

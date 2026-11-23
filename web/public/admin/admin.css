@@ -643,3 +643,5 @@ code { background: #f1ece3; padding: .05rem .3rem; border-radius: 4px; font-size
 .wl-group h3 { font-family: var(--sans); font-size: 1rem; margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; }
 .wl-group h3 small { font-weight: 400; color: var(--muted); font-size: .85rem; }
 .wl-queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.sheets-panel { grid-column: 1 / -1; }
+.sheets-steps { margin: .5rem 0 .9rem; padding-left: 1.2rem; display: grid; gap: .2rem; }

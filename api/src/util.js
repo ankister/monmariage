@@ -81,15 +81,17 @@ setInterval(() => {
 }, 600_000).unref();
 
 /* ---------- CSV (séparateur « ; » et BOM pour Excel en français) ---------- */
-function toCsv(rows, columns) {
+function toCsv(rows, columns, { sep = ';', bom = true, sheets = false } = {}) {
+  const quote = new RegExp(`["${sep}\\n\\r]`);
   const cell = (v) => {
     let s = v === null || v === undefined ? '' : String(v);
-    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; // évite l'injection de formules dans Excel
-    return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    // évite l'injection de formules (Excel, Google Sheets) ; un numéro « +33… » reste lisible dans Google Sheets
+    if (sheets ? /^[=@\t\r]|^[+-](?![\d\s().]*$)/.test(s) : /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return quote.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const head = columns.map((c) => cell(c.label)).join(';');
-  const body = rows.map((r) => columns.map((c) => cell(typeof c.value === 'function' ? c.value(r) : r[c.key])).join(';'));
-  return '﻿' + [head, ...body].join('\r\n');
+  const head = columns.map((c) => cell(c.label)).join(sep);
+  const body = rows.map((r) => columns.map((c) => cell(typeof c.value === 'function' ? c.value(r) : r[c.key])).join(sep));
+  return (bom ? '﻿' : '') + [head, ...body].join('\r\n');
 }
 
 /* ---------- Fuseaux horaires ---------- */

@@ -78,7 +78,8 @@ function canView(req) {
  *  Statistiques : le script Umami envoie ses mesures sans cookie (credentials « omit » par défaut) ;
  *  sans cette exception, chaque visite était refusée (401) quand le site est réservé aux invités. */
 const OPEN = [/^\/access\//, /^\/health$/, /^\/favicon$/, /^\/apparence$/, /^\/fonts\.css$/,
-  /^\/stats\/(config|script\.js|api\/send)$/];
+  /^\/stats\/(config|script\.js|api\/send)$/,
+  /^\/export\/(invites|chambres)\.csv$/]; // Google Sheets : protégé par sa propre clé secrète
 
 /** Middleware : refuse les routes publiques de l'API sans session quand l'accès est restreint. */
 function guard(req, res, next) {
