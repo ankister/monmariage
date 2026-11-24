@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Le grand jour se prépare</title>
+<link rel="stylesheet" href="/jeux/fonts.css">
+<style>
+/* VOICE: course contre la montre tendre et drôle, la veille du grand jour
+   IDEA: la salle vue d'en haut, comme un plan de décoratrice, qu'on remplit pièce à pièce
+   PICTURE: plan de salle illustré (parquet, pierre, pelouse), silhouettes pointillées à remplir, un témoin farceur qui chipe la déco
+   COLOUR and TYPE: prune profonde, or et rose poudré (comme les autres jeux du site) ; Great Vibes + Fredoka
+   LAYOUT: titre modeste, plan à gauche et chariot de décoration à droite (dessous sur téléphone), règles puis tableau d'honneur */
+:root{color-scheme:dark;--bg:#2b0e22;--gold:#e0b354;--blush:#f3c6cf;--ink:#fbeff2;--soft:#dcb6c7}
+:root[data-theme=light],:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 50% -10%,#5c1b47 0,var(--bg) 62%) fixed,var(--bg);color:var(--ink);font:16px/1.55 Fredoka,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(16px,3vw,32px) max(4vw,12px)}
+.top{text-align:center;padding-bottom:4px}
+h1{font:400 clamp(42px,7vw,64px)/1.05 'Great Vibes',cursive;margin:0;color:var(--blush);text-wrap:balance}
+.top p{margin:.3em auto 0;max-width:62ch;color:var(--soft)}
+.game{padding-top:10px}
+.cab{width:min(100%,1000px);margin:0 auto;background:linear-gradient(#4b1a3e,#33102a);border:2px solid var(--gold);border-radius:22px;padding:12px;box-shadow:0 22px 50px #0009,inset 0 0 0 6px #2b0e22}
+.arena{position:relative;display:grid;grid-template-columns:minmax(0,600px) minmax(240px,1fr);gap:14px;align-items:start}
+.stage{position:relative;width:min(100%,calc((100svh - 150px)*600/720));margin:0 auto;aspect-ratio:600/720;border-radius:10px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;background:#3b2a24}
+.stage>canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.side{display:flex;flex-direction:column;gap:10px}
+.hud{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hud div{background:#ffffff0d;border:1px solid #e0b35455;border-radius:12px;padding:6px 10px}
+.hud small{display:block;color:var(--soft);font-size:12px;line-height:1.2}
+.hud b{font-size:22px;font-variant-numeric:tabular-nums}
+.hud .warn b{color:#ff9db3}
+.hud .sm{display:none}
+.bubble{position:relative;background:#fffaf6;color:#2b0e22;border-radius:14px;padding:9px 12px;font-size:15px;line-height:1.35;min-height:3.4em}
+.bubble b{color:#8a2c5c}
+.tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.tray button{display:grid;grid-template-columns:40px 1fr;align-items:center;gap:6px;text-align:left;min-height:56px;padding:4px 8px;border-radius:12px;border:2px solid #e0b35466;background:#ffffff10;color:var(--ink);font:500 14px/1.15 Fredoka,system-ui,sans-serif;cursor:pointer;position:relative}
+.tray button canvas{width:40px;height:40px}
+.tray button .n{position:absolute;top:-8px;right:-6px;min-width:24px;height:24px;border-radius:12px;background:var(--gold);color:#2b0e22;font-weight:700;font-size:13px;display:grid;place-items:center;padding:0 5px}
+.tray button.sel{border-color:var(--gold);background:#e0b35433;box-shadow:0 0 0 3px #e0b35455}
+.tray button:disabled{opacity:.35;cursor:default}
+.tray button:focus-visible{outline:3px solid var(--blush);outline-offset:2px}
+.ov{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;gap:12px;padding:16px;background:#1c0816ee;overflow:auto;border-radius:10px;z-index:5}
+.ov[hidden]{display:none}
+.ov h2{font:400 clamp(30px,5.5vw,52px)/1.05 'Great Vibes',cursive;color:var(--blush);margin:0;text-wrap:balance}
+.ov p{margin:0;max-width:50ch}
+.ov .rounds{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;color:var(--soft);font-size:14px}
+.ov .rounds span{border:1.5px solid #e0b35488;border-radius:999px;padding:4px 12px}
+button.btn,.bar button{font:600 16px Fredoka,system-ui,sans-serif;min-height:44px;padding:0 22px;border-radius:999px;border:2px solid var(--gold);background:var(--gold);color:#2b0e22;cursor:pointer}
+button.btn:focus-visible,.bar button:focus-visible{outline:3px solid var(--blush);outline-offset:3px}
+.ghost{background:transparent!important;color:var(--gold)!important}
+.bar{display:flex;gap:10px;justify-content:center;padding-top:10px;flex-wrap:wrap}
+.bar button{background:transparent;color:var(--gold);min-height:40px;font-size:15px}
+.rules{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 28px;color:var(--soft);padding-top:22px}
+.rules p{margin:0}
+.rules b{color:var(--ink);font-weight:600}
+kbd{font:600 13px Fredoka,system-ui;border:1px solid #e0b35488;border-radius:6px;padding:0 5px;color:var(--ink)}
+.end-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 16px;font-size:14px;color:var(--soft)}
+.end-stats b{display:block;font-size:22px;color:var(--ink)}
+form.save{display:grid;gap:6px;justify-items:center;width:min(100%,340px)}
+form.save[hidden],#saveMsg:empty{display:none}
+form.save label{font-size:14px;color:var(--soft)}
+form.save .row{display:flex;gap:8px;width:100%}
+form.save input{flex:1;font:500 16px Fredoka,system-ui,sans-serif;min-height:44px;padding:0 14px;border-radius:999px;border:2px solid var(--blush);background:#fffaf6;color:#2b0e22}
+form.save input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+form.save .row button{padding:0 16px}
+#saveMsg{color:var(--gold);font-weight:600;margin:0}
+.board{max-width:1000px;margin:0 auto;padding-top:30px}
+.board h2{font:400 clamp(34px,5vw,46px)/1.05 'Great Vibes',cursive;color:var(--blush);margin:0}
+.board .note{margin:2px 0 14px;color:var(--soft);font-size:14px}
+.board ol{list-style:none;margin:0;padding:0;border-top:1px solid #e0b35455}
+.board li{display:grid;grid-template-columns:2.4em minmax(0,1fr) auto auto;gap:4px 14px;align-items:baseline;padding:10px 4px;border-bottom:1px solid #e0b35433}
+.board li.me{background:#e0b3541f}
+.board .rk{font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.board .nm{font-weight:600;overflow-wrap:anywhere}
+.board .st{font-size:13px;color:var(--soft);white-space:nowrap}
+.board .sc{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.board .empty{color:var(--soft);padding:14px 4px;display:block}
+@media (max-width:760px){
+  .arena{grid-template-columns:1fr}
+  .stage{width:min(100%,calc((100svh - 300px)*600/720));margin:0 auto}
+  .side{order:2}
+  .hud{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .hud div{padding:4px 7px}
+  .hud small{font-size:10.5px}
+  .hud b{font-size:17px}
+  .hud .lg{display:none}
+  .hud .sm{display:inline}
+  .tray button{min-height:50px}
+  .bubble{min-height:0}
+  .tray{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+  .end-stats b{font-size:18px}
+  .ov{gap:8px}
+}
+@media (max-width:600px){.board li{grid-template-columns:2.2em minmax(0,1fr) auto}.board .st{display:none}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+/* intégration dans la page des jeux */
+.embed body{min-height:0;background:transparent}
+.embed .top{display:none}
+.embed .game{padding-top:6px}
+</style>
+<script src="mode-integre.js"></script>
+</head>
+<!-- Prénoms et témoins injectés au démarrage du conteneur (variables PRENOM_* et TEMOINS_*) -->
+<body data-marie="__PRENOM_MARIE__" data-mariee="__PRENOM_MARIEE__" data-tm="__TEMOINS_MARIE__" data-tf="__TEMOINS_MARIEE__">
+
+<header class="band top">
+  <h1>Le grand jour se prépare</h1>
+  <p id="pitch">Les invités arrivent bientôt et la salle est encore vide ! Aide les mariés à tout installer à temps… pendant que les témoins font les farceurs.</p>
+</header>
+
+<main class="band game">
+  <div class="cab">
+    <div class="arena">
+      <div class="stage" id="stage">
+        <canvas id="cv" width="600" height="720" aria-label="Plan de la salle vu du dessus : place la décoration sur les silhouettes en pointillés"></canvas>
+      </div>
+      <div class="side">
+        <div class="hud" aria-live="off">
+          <div id="hudTime"><small><span class="lg">Les invités arrivent dans</span><span class="sm">Invités dans</span></small><b id="time">1:00</b></div>
+          <div><small>Points</small><b id="score">0</b></div>
+          <div><small>Salle</small><b id="room">1 / 3</b></div>
+          <div><small>Installé</small><b id="done">0 / 0</b></div>
+        </div>
+        <p class="bubble" id="bubble" aria-live="polite"></p>
+        <div class="tray" id="tray" role="group" aria-label="Chariot de décoration : choisis un élément, puis touche sa place sur le plan"></div>
+      </div>
+
+      <div class="ov" id="menu">
+        <h2 id="menuTitle">À vos marques, la déco !</h2>
+        <p id="menuText"></p>
+        <div class="rounds"><span>1 · La salle des mariages</span><span>2 · L’église</span><span>3 · Le jardin</span></div>
+        <button class="btn" id="start">Ouvrir les portes</button>
+      </div>
+      <div class="ov" id="between" hidden>
+        <h2 id="betweenTitle"></h2>
+        <p id="betweenText"></p>
+        <div class="end-stats" id="betweenStats"></div>
+        <button class="btn" id="next">Salle suivante</button>
+      </div>
+      <div class="ov" id="pause" hidden>
+        <h2>Pause</h2>
+        <div class="bar"><button id="resume">Reprendre</button><button class="ghost" id="quit">Abandonner</button></div>
+      </div>
+      <div class="ov" id="end" hidden>
+        <h2 id="endTitle"></h2>
+        <p id="endText"></p>
+        <div class="end-stats" id="endStats"></div>
+        <form class="save" id="saveForm" hidden>
+          <label for="pseudo">Inscris ton nom au tableau d’honneur (<span id="scoreTxt"></span> points)</label>
+          <div class="row"><input id="pseudo" maxlength="20" autocomplete="nickname" required placeholder="Ton prénom"><button class="btn">Valider</button></div>
+        </form>
+        <p id="saveMsg"></p>
+        <div class="bar"><button id="again">Rejouer</button></div>
+      </div>
+    </div>
+    <div class="bar">
+      <button id="pauseBtn">Pause</button>
+      <button id="musicBtn" aria-pressed="true">Musique : oui</button>
+      <button id="soundBtn" aria-pressed="true">Bruitages : oui</button>
+    </div>
+  </div>
+
+  <section class="rules" aria-label="Règles">
+    <p><b>But.</b> Trois salles à décorer : la mairie, l’église, puis le jardin pour la cérémonie laïque. Remplis toutes les silhouettes en pointillés avant l’arrivée des invités.</p>
+    <p><b>Installer.</b> Choisis un élément dans le chariot, puis touche sa place sur le plan (ou fais-le glisser). L’élément reste choisi : enchaîne les chaises ! Clavier : <kbd>1</kbd> à <kbd>9</kbd> pour choisir.</p>
+    <p><b>Attention.</b> Les bouquets blancs et roses ne vont pas au même endroit : regarde la couleur des silhouettes. Une erreur coûte 3 secondes.</p>
+    <p><b>Les témoins farceurs.</b> Ils entrent et chipent la déco. Touche-les pour les chasser (bonus), sinon remets l’élément en place. Enchaîne vite pour le bonus de série. Pause : <kbd>Échap</kbd>.</p>
+  </section>
+
+  <section class="board" aria-live="polite">
+    <h2>Tableau d’honneur</h2>
+    <p class="note" id="boardNote"></p>
+    <ol id="boardList"></ol>
+  </section>
+</main>
+<script src="jeu.js"></script>
+</body>
+</html>

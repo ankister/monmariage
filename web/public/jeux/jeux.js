@@ -4,7 +4,8 @@ const GAMES={
   retard:{title:'__PRENOM_MARIE__ est en retard',src:'retard/index.html#integre',api:'retard/api/scores',ls:'jeu-retard-scores',detail:e=>e.won?"À l'heure":'En retard'},
   cavale:{title:'__PRENOM_MARIE__ en cavale',src:'cavale/index.html#integre',api:'cavale/api/scores',ls:'jeu-cavale-scores',detail:e=>e.level?'Niveau '+e.level:''},
   temoins:{title:'Le combat des témoins',src:'temoins/index.html#integre',api:'temoins/api/scores',ls:'jeu-temoins-scores',detail:e=>'Team '+(e.level===2?'__PRENOM_MARIEE__':'__PRENOM_MARIE__')+(e.won?' · victoire':'')},
-  livraison:{title:'Livraison sous haute tension',src:'livraison/index.html#integre',api:'livraison/api/scores',ls:'jeu-livraison-scores',detail:e=>['Tranquille','Normal','Témoins déchaînés'][e.level]||''}
+  livraison:{title:'Livraison sous haute tension',src:'livraison/index.html#integre',api:'livraison/api/scores',ls:'jeu-livraison-scores',detail:e=>['Tranquille','Normal','Témoins déchaînés'][e.level]||''},
+  ceremonie:{title:'Le grand jour se prépare',src:'ceremonie/index.html#integre',api:'ceremonie/api/scores',ls:'jeu-ceremonie-scores',detail:e=>e.won?'3 salles prêtes':(e.level||0)+' salle(s) prête(s)'}
 };
 const frame=$('frame');let current=null;
 
@@ -25,7 +26,7 @@ async function loadBoard(id){
     ol.append(li);
   });
 }
-const loadBoards=()=>{loadBoard('retard');loadBoard('cavale');loadBoard('temoins');loadBoard('livraison')};
+const loadBoards=()=>{loadBoard('retard');loadBoard('cavale');loadBoard('temoins');loadBoard('livraison');loadBoard('ceremonie')};
 
 function show(id){
   if(id&&GAMES[id]){
